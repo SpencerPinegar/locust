@@ -301,7 +301,8 @@ def create_options(
         logfile=None,
         loglevel='INFO',
         show_version=False,
-        list_commands=False):
+        list_commands=False,
+        skip_log_setup=False):
     """Create options objects for passing to `run_locust` when running Locust programmatically.
     
     Keyword Arguments:
@@ -370,6 +371,7 @@ def create_options(
     opts.show_task_ratio_json=show_task_ratio_json
     opts.logfile=logfile
     opts.loglevel=loglevel
+    opts.skip_log_setup=skip_log_setup
 
     # Miscellaneous
     opts.show_version=show_version

@@ -157,7 +157,7 @@ class APIUser(HttpLocust):
     task_set = APITasks
 
 
-def run_programmatically(api_call_weight, env, node, version, min, max, num_clients, hatchrate, runtime):
+def run_programmatically(api_call_weight, env, node, version, min, max, num_clients, hatchrate, runtime, **kwargs):
 
     config = Config()
     pool_factory = RequestPoolFactory(config)
@@ -165,7 +165,7 @@ def run_programmatically(api_call_weight, env, node, version, min, max, num_clie
     APITasks.init_data(api_call_weight, pool_factory, version, env, min, max)
     APITasks.set_tasks(api_call_weight)
     options = create_options(locust_classes=[APIUser], host=host, no_web=True, num_clients=num_clients, hatch_rate=hatchrate,
-                             loglevel="WARNING", run_time=runtime)
+                             loglevel="WARNING", run_time=runtime, **kwargs)
     run_locust(options)
 
 
