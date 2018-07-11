@@ -1,8 +1,12 @@
 import logging
 import socket
 import sys
+from gevent import monkey
 
 host = socket.gethostname()
+
+
+
 
 def setup_logging(loglevel, logfile):
     numeric_level = getattr(logging, loglevel.upper(), None)
@@ -29,6 +33,9 @@ class StdOutWrapper(object):
         """No-op for wrapper"""
         pass
 
+
+
+
 class StdErrWrapper(object):
     """
     Wrapper for stderr
@@ -39,6 +46,7 @@ class StdErrWrapper(object):
     def flush(self, *args, **kwargs):
         """No-op for wrapper"""
         pass
+
 
 # set up logger for the statistics tables
 console_logger = logging.getLogger("console_logger")

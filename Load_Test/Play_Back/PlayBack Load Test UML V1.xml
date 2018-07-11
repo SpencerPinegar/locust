@@ -1,0 +1,155 @@
+<diagram program="umletino" version="14.2"><zoom_level>10</zoom_level><help_text>Space for UpdateGUI String]s</help_text><element><id>UMLGeneric</id><coordinates><x>931</x><y>34</y><w>410</w><h>320</h></coordinates><panel_attributes>symbol=component
+Web GUI
+-.
+DVR Playback Params:
+    Bit-rate 
+          Options 1 - Lowest, Middle, Highest, Variable, Fixed
+    Protocol 
+         Options 1 - QMX, HLS, DASH
+    Simultaneous Reads 
+         TextField 1 -  Int or "max" -- "max" = to failure or 4000
+    (V2) Network Connection Range
+          Options 1 (Min Conn) - Worst, Bad, Fair, Good, Best
+          Options 2 (Max Conn) - Worst, Bad, Fair, Good, Best
+    Submit
+          Button
+
+    Response:
+          TextField 1 (read only) - Result Based on UpdateGUI()
+                   Notifies of Asset Availability and Server Availability
+     
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>Text</id><coordinates><x>1741</x><y>205</y><w>100</w><h>80</h></coordinates><panel_attributes>customelement=
+// Text Element
+// DB Symbol
+drawArc(0,0,width,height*2/5,0,180,true) fg=black bg=#222222 //Parameters (x, y, width, height, start, extent, open)
+drawArc(0,0,width,height*2/5,180,180,true) fg=black //Parameters (x, y, width, height, start, extent, open)
+drawRectangle(0,(height+0.5)/5,width,(height)*3/5-1) fg=#929292 bg=#222222 //Parameters (x, y, width, height)
+drawLine(0,height/5,0,height*4/5)fg=black //Parameters (x1, y1, x2, y2) 
+drawLine(width,height/5,width,height*4/5)fg=black //Parameters (x1, y1, x2, y2) 
+drawArc(0,height*1/5,width,height*2/5,180,180,true) fg=black //Parameters (x, y, width, height, start, extent, open)
+drawArc(0,height*2/5,width,height*2/5,180,180,true) fg=black //Parameters (x, y, width, height, start, extent, open)
+drawArc(0,height*3/5,width,height*2/5,180,180,true) fg=black bg=#222222 //Parameters (x, y, width, height, start, extent, open)
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>911</x><y>492</y><w>570</w><h>290</h></coordinates><panel_attributes>_ Python Script: Health Check__
+--
+VerifyAssests() : (Bool, Bool)  
+     Verifies there are enough assets for reads verifies Daily Checkstream done on assets
+     (Bool, Bool) - Asset Availability, Asset Checkstream Result
+
+CreateUniqueAssets(HoursNeeded : Int) :
+     Creates new unique assets for recordings based on existing assets, must be able to 
+     concurrently stream them without pulling same asset into cache
+
+InitMaster(BitRate : int, Protocol : int, Simultaneous Reads, MasterSSH: "String") : {String: Bool}
+    Ping master server to check status - if off returns {"{Master_server_name}": False}
+    Wait for Master to respond and verify Master has been created successfully with slaves
+    Return - server availability {"Server_1": True, "Server_2": True,..., "Server_N", False}
+
+UpdateGUI(Assets Verified : Bool, ServersVerified: {String : Bool}, SpawnMaster : Bool ) : String
+     Prettifies Asset and Server Information into JSON Response
+     Returns prettified JSON Response
+
+
+
+       </panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>981</x><y>342</y><w>110</w><h>170</h></coordinates><panel_attributes>lt=&lt;&lt;&lt;-
+Submit Button</panel_attributes><additional_attributes>20;150;10;10</additional_attributes></element><element><id>Relation</id><coordinates><x>801</x><y>268</y><w>150</w><h>480</h></coordinates><panel_attributes>lt=&lt;-
+m1=UpdateGUI String</panel_attributes><additional_attributes>130;10;10;10;10;450;110;454</additional_attributes></element><element><id>Relation</id><coordinates><x>1391</x><y>218</y><w>370</w><h>340</h></coordinates><panel_attributes>lt=&lt;.&gt;
+VerifyAssests()</panel_attributes><additional_attributes>10;314;350;10</additional_attributes></element><element><id>Relation</id><coordinates><x>1371</x><y>268</y><w>480</w><h>350</h></coordinates><panel_attributes>lt=&lt;.&gt;
+CreateUniqueAssets()</panel_attributes><additional_attributes>10;324;460;10</additional_attributes></element><element><id>UMLClass</id><coordinates><x>961</x><y>892</y><w>520</w><h>270</h></coordinates><panel_attributes>_ Python Script: Master SetUp__
+--
+VerifyServers(): {String: Bool}
+     Pings all necessary slave servers for the the load
+     Returns {"Server_1": True, "Server_2": True,..., "Server_N", False}
+
+PlaybackMaster(): ----- Grabs and aggregates Stats (method to be decided)
+     Single threaded operation - 
+     Runs PlaybackSlave() on each core of each necessary server that was pinged
+     Gathers all relevant stats from each of the slave servers
+
+
+
+
+       </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLPackage</id><coordinates><x>1241</x><y>365</y><w>100</w><h>90</h></coordinates><panel_attributes>Settings
+--
+Assets
+User
+ETC...
+halign=left</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1261</x><y>436</y><w>90</w><h>90</h></coordinates><panel_attributes>lt=.&gt;
+&lt;&lt;access&gt;&gt;</panel_attributes><additional_attributes>30;70;10;10</additional_attributes></element><element><id>UMLNote</id><coordinates><x>690</x><y>0</y><w>1020</w><h>810</h></coordinates><panel_attributes>DCManager
+valign=center
+bg=orange
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLNote</id><coordinates><x>850</x><y>860</y><w>720</w><h>350</h></coordinates><panel_attributes>Master
+valign=center
+bg=green
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLNote</id><coordinates><x>0</x><y>1050</y><w>560</w><h>270</h></coordinates><panel_attributes>Slave
+valign=center
+bg=red
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>61</x><y>1112</y><w>450</w><h>150</h></coordinates><panel_attributes>_ Python Script: Server SetUp__
+--
+Ping(): Bool
+     Verifies the server can be accessed and controlled by the master
+
+PlaybackSlave() -- Stats to be decided
+     Accesses the necessary DVR to playback as many shows as hardware allows
+
+
+
+
+
+       </panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>601</x><y>638</y><w>330</w><h>340</h></coordinates><panel_attributes>lt=&lt;.&gt;
+InitMaster()</panel_attributes><additional_attributes>250;314;10;310;10;10;310;10</additional_attributes></element><element><id>Relation</id><coordinates><x>551</x><y>968</y><w>310</w><h>160</h></coordinates><panel_attributes>lt=&lt;.&gt;
+VerifyServers()</panel_attributes><additional_attributes>290;14;10;140</additional_attributes></element><element><id>UMLClass</id><coordinates><x>651</x><y>1362</y><w>450</w><h>150</h></coordinates><panel_attributes>_ Python Script: Server SetUp__
+--
+Ping(): Bool
+     Verifies the server can be accessed and controlled by the master
+
+PlaybackSlave() -- Stats to be decided
+     Accesses the necessary DVR to playback as many shows as hardware allows
+
+
+
+
+
+       </panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLNote</id><coordinates><x>590</x><y>1300</y><w>560</w><h>270</h></coordinates><panel_attributes>Slave
+valign=center
+bg=red
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>881</x><y>1198</y><w>120</w><h>120</h></coordinates><panel_attributes>lt=&lt;.&gt;
+VerifyServers()</panel_attributes><additional_attributes>30;14;10;100</additional_attributes></element><element><id>UMLNote</id><coordinates><x>1330</x><y>1300</y><w>560</w><h>270</h></coordinates><panel_attributes>Slave
+valign=center
+bg=red
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1401</x><y>1362</y><w>450</w><h>160</h></coordinates><panel_attributes>_ Python Script: Server SetUp__
+--
+Ping(): Bool
+     Verifies the server can be accessed and controlled by the master
+
+PlaybackSlave() -- Stats to be decided
+     Accesses the necessary DVR to playback as many shows as hardware allows
+
+
+
+
+
+       </panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1561</x><y>1078</y><w>210</w><h>60</h></coordinates><panel_attributes>lt=&lt;.&gt;
+VerifyServers()</panel_attributes><additional_attributes>10;14;190;40</additional_attributes></element><element><id>UMLNote</id><coordinates><x>1750</x><y>980</y><w>560</w><h>270</h></coordinates><panel_attributes>Slave
+valign=center
+bg=red
+
+</panel_attributes><additional_attributes></additional_attributes></element><element><id>UMLClass</id><coordinates><x>1811</x><y>1042</y><w>450</w><h>160</h></coordinates><panel_attributes>_ Python Script: Server SetUp__
+--
+Ping(): Bool
+     Verifies the server can be accessed and controlled by the master
+
+PlaybackSlave() -- Stats to be decided
+     Accesses the necessary DVR to playback as many shows as hardware allows
+
+
+
+
+
+       </panel_attributes><additional_attributes></additional_attributes></element><element><id>Relation</id><coordinates><x>1441</x><y>1208</y><w>130</w><h>120</h></coordinates><panel_attributes>lt=&lt;.&gt;
+VerifyServers()</panel_attributes><additional_attributes>10;14;60;100</additional_attributes></element></diagram>

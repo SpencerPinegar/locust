@@ -1,0 +1,305 @@
+###THIS information should match with the information listed at
+###    https://wiki.movenetworks.com/display/RSCLOUD/Deployment+Notes+And+Status#DeploymentNotesAndStatus-BETArsdvr-beta
+
+#TODO: Allow this information to be updated based on a simple webscrape of the above URL
+
+
+
+
+DataBase Settings:
+  Environments:
+    DEV1:
+      Host: d-gp2-dbp60.imovetv.com
+      Port: 5432
+    DEV2:
+      Host: d-gp2-dbp63.imovetv.com
+      Port: 5432
+    DEV3:
+      Host: d-gp2-dbp59.imovetv.com
+      Port: 5432
+    QA:
+      Host: q-gp2-dbp7.imovetv.com
+      Port: 9999
+    BETA:
+      Host: b-cg17-dbp7.b.movetv.com
+      Port: 9999
+    BETA2:
+      Host: b-gp2-dbp36.imovetv.com
+      Port: 9999
+    PROD:
+      Host: p-dc10-dbp7.imovetv.com
+      Port: 9999
+  Credentials:
+    DataBase Name: dvrcloud
+    DataBase Username: dvrcloud
+    DataBase Password: dvrcloud_pw
+
+
+RecAPI Settings:
+  Environments:
+     DEV1:
+      VIP Host: d-cg17-dvrapi.movetv.com
+      Node Host: d-gp2-recapi-{0}.imovetv.com
+      Total Nodes: 2
+     DEV2:
+      VIP Host: d-cg17-dvrapi2-1.movetv.com
+      Node Host: d-gp2-dvrapi2-{0}.imovetv.com
+      Total Nodes: 6
+     DEV3:
+      VIP Host: d-cg17-dvrapi3-1.movetv.com
+      Node Host: d-gp2-dvrapi3-{0}.imovetv.com
+      Total Nodes: 6
+     QA:
+      VIP Host: q-cg17-dvrapi.movetv.com
+      Node Host: q-gp2-recapi-{0}.imovetv.com
+      Total Nodes: 2
+     BETA:
+      VIP Host: b-cg17-recapi.movetv.com
+      Node Host: b-gp2-recapi-{0}.b.movetv.com
+      Total Nodes: 6
+     BETA2:
+      VIP Host: b-cg17-dvrapi2.b.movetv.com
+      Node Host: b-gp2-dvrapi2-{0}.imovetv.com
+      Total Nodes: 2
+
+## This information should match the information listed at
+# https://wiki.movenetworks.com/display/RSCLOUD/DVR+Client+APIs
+
+  Routes:
+
+    User Recordings Ribbon:
+      Route: user-recordings
+      Versions: [1, 2, 4]
+      Normal Min: 30
+      Normal Max: 60
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields:
+          rec_guid: guid
+          type: [recently_recorded, recorded_by_name, pending_by_name, pending_by_date, small]
+          page_size: int
+          page_number: int
+          watched: bool
+          ribbon_type: [rs, ls, both]
+      Version 2:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields:
+          rec_guid: guid
+          type: [recently_recorded, recorded_by_name, pending_by_name, pending_by_date, small]
+          page_size: int
+          page_number: int
+          watched: bool
+          ribbon_type: [rs, ls, both]
+      Version 4:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields:
+          rec_guid: guid
+          type: [recently_recorded, recorded_by_name, pending_by_name, pending_by_date, small]
+          page_size: int
+          page_number: int
+          watched: bool
+          ribbon_type: [rs, ls, both]
+
+
+    User Franchise Ribbon:
+      Route: user-franchise-recordings
+      Versions: [1, 4]
+      Normal Min: 10
+      Normal Max: 30
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          franchise: {arg2: franchise, pos: 1}
+        Optional Fields:
+          filter: [all, pending, recorded]
+          watched: bool
+          ribbon_type: [rs, ls, both]
+      Version 4:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          franchise: {arg2: franchise_guid, pos: 1}
+        Optional Fields:
+          filter: [all, pending, recorded]
+          watched: bool
+          ribbon_type: [rs, ls, both]
+
+
+    User Recspace Information:
+      Route: user-recspace
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields: null
+
+
+    Update User Settings:
+      Route: user-update
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields:
+          rs_recspace: int
+          inactive: bool
+          allow_auto_delete: bool
+          description: string
+          subscription_key: int-l
+          prepad: int
+          postpad: int
+
+
+    Create Recordings:
+      Route: rec-create
+      Versions: [1, 4]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          channel: {arg2: channel_id, pos: 1}
+          asset: {arg3: asset_id, pos: 2}
+        Optional Fields:
+          prepad: int
+          postpad: int
+          lsdvr: guid
+          protected: bool
+      Version 4:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          channel: {arg2: guid, pos: 1}
+          external_id: {arg3: external_id, pos: 2}
+        Optional Fields:
+          prepad: int
+          postpad: int
+          lsdvr: guid
+          protected: bool
+
+
+    Protect Recordings:
+      Route: rec-save
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          type: [rs, ls]
+          guid: {arg1: guid, pos: 0}
+        Optional Fields:
+          protected: bool
+
+
+    Mark Watched:
+      Route: rec-watched
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          type: [rs, ls]
+          guid: {arg1: guid, pos: 0}
+        Optional Fields: null
+
+
+    Delete Recordings:
+      Route: rec-delete
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          type: [rs, ls]
+          guid: {arg1: guid, pos: 0}
+        Optional Fields: null
+
+
+    Create Rules:
+      Route: rule-create
+      Versions: [1, 4]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          type: [franchise]
+          franchise: [377898, 216]
+          mode: [new, all]
+        Optional Fields:
+          title: string
+          keep: int
+          protected: bool
+      Version 4:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          type: [franchise]
+          franchise: [baee73e6-1dc4-4b89-9e06-94ede7decc25, 3613ee7e-b193-4be4-a60b-bb2fb116e61c]
+          mode: [new, all]
+        Optional Fields:
+          title: string
+          keep: int
+          protected: bool
+
+    Update Rules:
+      Route: rule-update
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          guid: {arg1: guid, pos: 0}
+          type: [franchise]
+        Optional Fields:
+          protected: bool
+          title: string
+          mode: [new, all]
+          keep: int
+
+    Delete Rules:
+      Route: rule-delete
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          guid: {arg1: guid, pos: 0}
+          type: [franchise]
+        Optional Fields:
+          purge: bool
+
+    List Rules:
+      Route: user-recrules
+      Versions: [1, 4]
+      Normal Min: 2
+      Normal Max: 7
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields: null
+      Version 4:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields: null
+
+
+
+
+
