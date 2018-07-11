@@ -1,5 +1,6 @@
 from locust.core import HttpLocust, Locust, TaskSet
 from locust import main
+import os
 
 from .testcases import LocustTestCase
 
@@ -37,8 +38,9 @@ class TestTaskSet(LocustTestCase):
         
         class MyLocust(Locust):
             task_set = MyTaskSet
+        locust_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), "locustfile_test.py")
 
-        default_options = main.create_options(list_commands=True, locustfile="locust/test/locustfile_test.py")
+        default_options = main.create_options(list_commands=True, locustfile=locust_file)
         # Test that it runs with locustfile
         self.assertEqual(set(main.run_locust(default_options)), set(["LocustfileHttpLocust","LocustfileLocust"]))
 
@@ -65,6 +67,6 @@ class TestTaskSet(LocustTestCase):
 
         # Test that arguments and locust_classes work correctly
         self.assertEqual(set(main.run_locust(no_locustfile, arguments=["MyLocust"])),set(["MyLocust", "MyHttpLocust"]))
-
+        print("yes")
 
 
