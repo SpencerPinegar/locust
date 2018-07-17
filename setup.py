@@ -5,9 +5,9 @@ import re
 
 from setuptools import find_packages, setup
 
-# parse version from locust/__init__.py
+# parse version from Load_Test/__init__.py
 _version_re = re.compile(r'__version__\s+=\s+(.*)')
-_init_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "locust", "__init__.py")
+_init_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "Load_Test", "__init__.py")
 with open(_init_file, 'rb') as f:
     version = str(ast.literal_eval(_version_re.search(
         f.read().decode('utf-8')).group(1)))
@@ -35,7 +35,7 @@ setup(
     keywords='',
     author='Jonatan Heyman, Carl Bystrom, Joakim Hamrén, Hugo Heyman',
     author_email='',
-    url='https://locust.io/',
+    url='https://Load_Test.io/',
     license='MIT',
     packages=find_packages(exclude=['ez_setup', 'examples', 'tests']),
     include_package_data=True,
@@ -49,11 +49,11 @@ setup(
         "pyzmq>=16.0.2", 
         "geventhttpclient-wheels",
     ],
-    test_suite="locust.test",
+    test_suite="Load_Test.test",
     tests_require=['mock'],
     entry_points={
         'console_scripts': [
-            'locust = locust.main:main',
+            'Load_Test = Load_Test.main:main',
         ]
     },
 )

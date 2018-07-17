@@ -232,6 +232,7 @@ class TestTwoStateRequestPool(APITest):
         reclean_state = execute_test_sql_statement(route_name, env)
         for user in reclean_state:
             self.assertEqual(user[1], clean_default)
+        pool.close()
 
 
 
@@ -266,7 +267,7 @@ class TestTwoStateRequestPool(APITest):
         reclean_state = execute_test_sql_statement(route_name, env)
         for recording in reclean_state:
             self.assertEqual(recording[1], clean_default)
-
+        pool.close()
 
     def test_update_rules_v1(self):
         route_name, version, env, clean_default, dirty_default = ("Update Rules", 1, "DEV2", 2, 1)
@@ -298,7 +299,7 @@ class TestTwoStateRequestPool(APITest):
         reclean_state = execute_test_sql_statement(route_name, env)
         for recording in reclean_state:
             self.assertEqual(recording[0], clean_default)
-
+        pool.close()
 
 
 class TestInverseStateRequestPool(APITest):

@@ -272,10 +272,10 @@ class TestFastHttpLocustClass(WebserverTestCase):
             host = "http://127.0.0.1:%i" % self.port
 
         class MyAuthorizedLocust(FastHttpLocust):
-            host = "http://locust:menace@127.0.0.1:%i" % self.port
+            host = "http://Load_Test:menace@127.0.0.1:%i" % self.port
 
         class MyUnauthorizedLocust(FastHttpLocust):
-            host = "http://locust:wrong@127.0.0.1:%i" % self.port
+            host = "http://Load_Test:wrong@127.0.0.1:%i" % self.port
 
         locust = MyLocust()
         unauthorized = MyUnauthorizedLocust()

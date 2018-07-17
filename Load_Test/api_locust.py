@@ -65,6 +65,11 @@ class APITasks(TaskSet):
         json_data = APITasks.list_rules_pool.get_json()
         locust.client.post(APITasks.lr_url, json=json_data)
 
+
+
+    def _create_delete_rules(locust):
+        json_data
+
     _task_method_realtion = {
         "User Recordings Ribbon": _user_recordings_ribbon,
         "User Franchise Ribbon": _user_franchise_ribbon,
@@ -149,7 +154,7 @@ class APITasks(TaskSet):
 
 class APIUser(HttpLocust):
     """
-    Locust user class that does requests to the locust web server running on localhost
+    Locust user class that does requests to the Load_Test web server running on localhost
     """
 
     min_wait = 0
@@ -165,7 +170,7 @@ def run_programmatically(api_call_weight, env, node, version, min, max, num_clie
     APITasks.init_data(api_call_weight, pool_factory, version, env, min, max)
     APITasks.set_tasks(api_call_weight)
     options = create_options(locust_classes=[APIUser], host=host, no_web=True, num_clients=num_clients, hatch_rate=hatchrate,
-                             loglevel="WARNING", run_time=runtime, **kwargs)
+                             skip_log_setup=True,loglevel="DEBUG", run_time=runtime, **kwargs)
     run_locust(options)
 
 

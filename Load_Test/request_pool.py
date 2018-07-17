@@ -39,9 +39,6 @@ class RequestPoolFactory:
         - Create/Delete Recordings Rules
     """
 
-
-
-
     def __init__(self, config, envs=None):
         self.config = config
         self.env_db_connections = self._init_connections(envs)
@@ -64,63 +61,52 @@ class RequestPoolFactory:
         route = self._get_route(route_name, version)
         return pool, route
 
-
-
-
     def get_update_user_settngs_pool_and_route(self, version, env, min_pool_size, max_pool_size, **kwargs):
-        start_params = {"rs_recspace": 0}
+        start_params = {"rs_recspace": 80085}
         end_params = {"rs_recspace": 599}
         route_name = "Update User Settings"
-        pool = self._get_two_state_pool(route_name, version, env, start_params, end_params,min_pool_size, max_pool_size, **kwargs)
+        pool = self._get_two_state_pool(route_name, version, env, start_params, end_params, min_pool_size,
+                                        max_pool_size, **kwargs)
         route = self._get_route(route_name, version)
         return pool, route
 
-
-    #CREATE RECORDINGS HERE
-
+    # TODO: CREATE RECORDINGS HERE
 
     def get_protect_recordings_pool_and_route(self, version, env, min_pool_size, max_pool_size, **kwargs):
         start_params = {"protected": False}
         end_params = {"protected": True}
         route_name = "Protect Recordings"
-        pool = self._get_two_state_pool(route_name, version, env, start_params, end_params,min_pool_size, max_pool_size,  **kwargs)
+        pool = self._get_two_state_pool(route_name, version, env, start_params, end_params, min_pool_size,
+                                        max_pool_size, **kwargs)
         route = self._get_route(route_name, version)
         return pool, route
 
     def get_mark_watched_pool_and_route(self, version, env, min_pool_size, max_pool_size, **kwargs):
         route_name = "Mark Watched"
-        pool = self._get_pool(route_name, version, env,min_pool_size, max_pool_size,  **kwargs)
+        pool = self._get_pool(route_name, version, env, min_pool_size, max_pool_size, **kwargs)
         route = self._get_route(route_name, version)
         return pool, route
 
+    # TODO: DELETE Recordings
 
-    #DELETE Recordings
-
-    #Create Rules Here
-
+    # TODO: Create Rules Here
 
     def get_update_rules_pool_and_route(self, version, env, min_pool_size, max_pool_size, **kwargs):
         start_params = {"mode": "all"}
         end_params = {"mode": "new"}
         route_name = "Update Rules"
-        pool = self._get_two_state_pool(route_name, version, env, start_params, end_params,min_pool_size, max_pool_size,  **kwargs)
+        pool = self._get_two_state_pool(route_name, version, env, start_params, end_params, min_pool_size,
+                                        max_pool_size, **kwargs)
         route = self._get_route(route_name, version)
         return pool, route
 
-    #DELETE RULES HERE
+    # TODO: DELETE RULES HERE
 
     def get_list_rules_pool_and_route(self, version, env, min_pool_size, max_pool_size, **kwargs):
         route_name = "List Rules"
         pool = self._get_pool(route_name, version, env, min_pool_size, max_pool_size, **kwargs)
         route = self._get_route(route_name, version)
         return pool, route
-
-
-
-
-
-
-
 
     # TODO: Create Functions To get Create/Delete Request Pools
 
@@ -130,14 +116,16 @@ class RequestPoolFactory:
     def _get_pool(self, route, version, env, min_pool_size, max_pool_size, **kwargs):
 
         sql_route, req_fields, opt_fields, min_norm, max_norm, is_list = self._get_route_version_info(route, version)
-        datapool = _ReadOnlyRequestPool(sql_route, req_fields, opt_fields, min_norm, max_norm, is_list, min_pool_size, max_pool_size)
+        datapool = _ReadOnlyRequestPool(sql_route, req_fields, opt_fields, min_norm, max_norm, is_list, min_pool_size,
+                                        max_pool_size)
         datapool.init_normal_pool(self._get_connection(env), **kwargs)
         return datapool
 
-    def _get_two_state_pool(self, route, version, env, start_params, end_params, min_pool_size, max_pool_size, **kwargs):
+    def _get_two_state_pool(self, route, version, env, start_params, end_params, min_pool_size, max_pool_size,
+                            **kwargs):
         sql_route, req_fields, opt_fields, min_norm, max_norm, is_list = self._get_route_version_info(route, version)
         datapool = _TwoStateRequestPool(sql_route, req_fields, opt_fields, min_norm, max_norm, start_params, end_params,
-                                        is_list, min_pool_size, max_pool_size )
+                                        is_list, min_pool_size, max_pool_size)
         datapool.init_normal_pool(self._get_connection(env), **kwargs)
         return datapool
 
@@ -187,6 +175,9 @@ class _ReadOnlyRequestPool(object):
         self._set_SQL(sql)
         self.normal_pool = None
 
+
+
+
     def add_optional_defualt_params(self, **kwargs):
         for key, value in kwargs.iteritems():
             if not self._is_optional_request_param(key, value):
@@ -200,6 +191,7 @@ class _ReadOnlyRequestPool(object):
         if not self._is_succesful_init():
             logger.error("Random JSON returned is None because no data could be found")
             return
+
         json = random.choice(self.normal_pool)
         if kwargs is not None:
             return_json = {}
@@ -210,7 +202,6 @@ class _ReadOnlyRequestPool(object):
             return self._listify(return_json)
         else:
             return self._listify(json)
-
 
     def init_normal_pool(self, conn, min=-1, max=-1, **kwargs):
         if self.max_pool_size <= 10 and self.max_pool_size != -1:
@@ -232,7 +223,8 @@ class _ReadOnlyRequestPool(object):
             logger.error("normal pool must be initialized prior to getting data")
             return False
         if len(self.normal_pool) < self.min_pool_size:
-            logger.error("Your pool was size was {0}: The minimum pool size is {1} - Create more data".format(len(self.normal_pool), self.min_pool_size))
+            logger.error("Your pool was size was {0}: The minimum pool size is {1} - Create more data".format(
+                len(self.normal_pool), self.min_pool_size))
             return False
         return True
 
@@ -321,17 +313,19 @@ class _ReadOnlyRequestPool(object):
                 for to_be_removed in remove:
                     json.pop(to_be_removed)
 
-
     def _listify(self, json):
         if self.is_list:
             return [json]
         else:
             return json
 
+
 class _TwoStateRequestPool(_ReadOnlyRequestPool):
 
-    def __init__(self, sql, req_fields, opt_fields, min, max, start_state_params, end_state_params, is_list, min_pool_size, max_pool_size):
-        _ReadOnlyRequestPool.__init__(self, sql, req_fields, opt_fields, min, max, is_list, min_pool_size, max_pool_size)
+    def __init__(self, sql, req_fields, opt_fields, min, max, start_state_params, end_state_params, is_list,
+                 min_pool_size, max_pool_size):
+        _ReadOnlyRequestPool.__init__(self, sql, req_fields, opt_fields, min, max, is_list, min_pool_size,
+                                      max_pool_size)
         self.index = 0
         self.start_state_params = start_state_params
         self.end_state_params = end_state_params
@@ -349,7 +343,7 @@ class _TwoStateRequestPool(_ReadOnlyRequestPool):
             self.flip_state()
             return self.get_json()
 
-    def _proccess_normal_request_data(self, normal_data, default_dict = None):
+    def _proccess_normal_request_data(self, normal_data, default_dict=None):
         if default_dict is None:
             default_dict = dict()
         default_dict.update(**self.current_default_params)
@@ -374,5 +368,6 @@ class _TwoStateRequestPool(_ReadOnlyRequestPool):
             response = requests.post(url, json=to_send)
             assert response.status_code in [200, 404]
 
-class _InverseStateRequestPool:
+
+class _InverseStateRequestPool(_ReadOnlyRequestPool):
     pass

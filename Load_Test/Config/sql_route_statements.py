@@ -1,7 +1,8 @@
 SQL_ROUTES_STATEMENTS = {
 
     "User Recordings Ribbon": """
-                                SELECT u.{arg1}
+                                SELECT
+                                u.{arg1}
                                 FROM content_recordinguser u JOIN rsstuff_rsrecording r ON u.guid = r.user_guid
                                 WHERE r.rec_start < now() AND r.health_percent > 50
                                 GROUP BY u.guid
@@ -9,24 +10,27 @@ SQL_ROUTES_STATEMENTS = {
     """,
 
     "User Franchise Ribbon": """
-                                SELECT u.{arg1}
-	                            , f.{arg2}
+                                SELECT 
+                                u.{arg1},
+                                f.{arg2}
                                 FROM content_recordinguser u JOIN rsstuff_rsrecording r ON u.guid = r.user_guid
 	                            JOIN content_franchiserecordingrule f ON f.guid = r.rule
                                 WHERE r.health_percent >  50 AND r.rec_start < now()
-                                GROUP BY u.{arg1}
-	                            , f.{arg2}
+                                GROUP BY u.{arg1},
+                                f.{arg2}
                                 having count (r.id) >= {min} and count (r.id) <= {max}
     """,
     "User Recspace Information": """
     
-                                SELECT u.{arg1}
+                                SELECT 
+                                u.{arg1}
                                 FROM content_recordinguser u
     """,
 
         # There are 400 Test Users
     "Update User Settings": """
-                                SELECT u.{arg1}
+                                SELECT 
+                                u.{arg1}
                                 FROM content_recordinguser u
                                 WHERE u.description = 'update_user_settings'
     
@@ -103,7 +107,6 @@ SQL_ROUTES_STATEMENTS = {
 
 
 
-
 TEST_SQL_STATEMENTS = {
 
         "Update User Settings": """
@@ -137,4 +140,100 @@ TEST_SQL_STATEMENTS = {
                                 GROUP BY fr.user_id
                                 HAVING count(fr.*) > 0)
         """
+}
+
+
+
+DATA_FACTORY_ROUTES = {
+
+    "users_exist": """
+                        SELECT
+                        u.guid,
+                        u.id
+                        FROM content_recordinguser u 
+                        WHERE u.description = '{desc}'
+    """,
+
+    "recs_exist": """
+                                SELECT
+                                u.guid,
+                                count(r.id)
+                                FROM content_recordinguser u JOIN {table_name} r ON u.guid = r.user_guid
+                                WHERE {future} r.health_percent > 50 AND u.description = '{desc}'
+                                GROUP BY 
+                                u.guid
+                                
+    """,
+
+    "franchise_recs_exist": """
+                                SELECT 
+                                u.guid,
+                                count(r.id)
+                                FROM content_recordinguser u JOIN {table_name} r ON u.guid = r.user_guid
+	                            JOIN content_franchiserecordingrule f ON f.guid = r.rule
+                                WHERE r.health_percent >  50 AND r.rec_start < now() AND u.description = '{desc}' AND f.franchise_guid = {franchise_guid}
+                                GROUP BY
+                                u.guid
+    """,
+
+    "rules_exist": """
+                              SELECT 
+                              u.guid,
+                              count(fr.guid)
+                              FROM content_franchiserecordingrule fr RIGHT JOIN content_recordinguser u
+                              ON u.id = fr.user_id 
+                              WHERE u.description = '{desc}' 
+                              GROUP BY 
+                              u.guid
+    """,
+
+    "user_guid_taken": """
+            SELECT 
+            u.id
+            FROM content_recordinguser u
+            WHERE u.guid = '{guid}'
+    """,
+
+    "user_guid_from_desc": """
+            SELECT
+            u.guid
+            FROM content_recordinguser u
+            WHERE u.description = '{desc}'
+    
+    """,
+
+    "user_id_from_desc": """
+                          SELECT
+                          u.id
+                          FROM content_recordinguser u
+                          WHERE u.description = '{desc}'
+
+    """,
+
+    "delete_users": """
+            DELETE FROM content_recordinguser u
+            WHERE u.guid = '{guid}'
+    
+    """,
+
+    "get_franchise_ids": """
+            SELECT 
+            f.guid
+            FROM content_franchise f
+            WHERE f.guid IS NOT NULL
+            limit {count}
+    """,
+
+    "get_rec_ids": """
+            SELECT
+            a.external_id,
+            c.guid
+            FROM content_asset a JOIN content_channel c 
+            ON a.channel_id = c.id
+            FULL OUTER JOIN rsstuff_rsrecording r ON r.asset_id = a.id
+            WHERE c.record = TRUE AND c.stream_cached = TRUE AND a.end > now()
+            limit {count}
+    """
+
+
 }

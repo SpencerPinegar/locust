@@ -32,5 +32,5 @@ class RescheduleTask(Exception):
 
 class RescheduleTaskImmediately(Exception):
     """
-    When raised in a Locust task, another locust task will be rescheduled immediately
+    When raised in a Locust task, another Load_Test task will be rescheduled immediately
     """

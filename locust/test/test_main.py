@@ -51,7 +51,7 @@ class TestTaskSet(LocustTestCase):
         conflict_options.locust_classes=[LocustfileLocust]
         self.assertRaises(ValueError,lambda: main.run_locust(conflict_options))
 
-        # Test that it runs with locustfile and locust options
+        # Test that it runs with locustfile and Load_Test options
         locustfile_and_classes = default_options
         locustfile_and_classes.locust_classes=[MyLocust, MyHttpLocust]
 

@@ -656,7 +656,7 @@ def stats_printer():
         gevent.sleep(CONSOLE_STATS_INTERVAL_SEC)
 
 def stats_writer(base_filepath):
-    """Writes the csv files for the locust run."""
+    """Writes the csv files for the Load_Test run."""
     while True:
         write_stat_csvs(base_filepath)
         gevent.sleep(CSV_STATS_INTERVAL_SEC)

@@ -60,7 +60,7 @@ class TestMasterRunner(LocustTestCase):
         class MyTestLocust(Locust):
             pass
         
-        with mock.patch("locust.rpc.rpc.Server", mocked_rpc_server()) as server:
+        with mock.patch("Load_Test.rpc.rpc.Server", mocked_rpc_server()) as server:
             master = MasterLocustRunner(MyTestLocust, self.options)
             server.mocked_send(Message("client_ready", None, "zeh_fake_client1"))
             self.assertEqual(1, len(master.clients))
@@ -79,7 +79,7 @@ class TestMasterRunner(LocustTestCase):
         class MyTestLocust(Locust):
             pass
         
-        with mock.patch("locust.rpc.rpc.Server", mocked_rpc_server()) as server:
+        with mock.patch("Load_Test.rpc.rpc.Server", mocked_rpc_server()) as server:
             master = MasterLocustRunner(MyTestLocust, self.options)
             server.mocked_send(Message("client_ready", None, "fake_client"))
             
@@ -101,7 +101,7 @@ class TestMasterRunner(LocustTestCase):
         class MyTestLocust(Locust):
             pass
         
-        with mock.patch("locust.rpc.rpc.Server", mocked_rpc_server()) as server:
+        with mock.patch("Load_Test.rpc.rpc.Server", mocked_rpc_server()) as server:
             master = MasterLocustRunner(MyTestLocust, self.options)
             server.mocked_send(Message("client_ready", None, "fake_client"))
             stats = RequestStats()
@@ -133,7 +133,7 @@ class TestMasterRunner(LocustTestCase):
         with mock.patch("time.time") as mocked_time:
             mocked_time.return_value = start_time
             global_stats.reset_all()
-            with mock.patch("locust.rpc.rpc.Server", mocked_rpc_server()) as server:
+            with mock.patch("Load_Test.rpc.rpc.Server", mocked_rpc_server()) as server:
                 master = MasterLocustRunner(MyTestLocust, self.options)
                 mocked_time.return_value += 1
                 server.mocked_send(Message("client_ready", None, "fake_client"))
@@ -194,7 +194,7 @@ class TestMasterRunner(LocustTestCase):
             runner.start_hatching(0, 1, wait=True)
             runner.greenlet.join()
         except gevent.Timeout:
-            self.fail("Got Timeout exception. A locust seems to have been spawned, even though 0 was specified.")
+            self.fail("Got Timeout exception. A Load_Test seems to have been spawned, even though 0 was specified.")
         finally:
             timeout.cancel()
     
@@ -208,7 +208,7 @@ class TestMasterRunner(LocustTestCase):
         class MyTestLocust(Locust):
             pass
         
-        with mock.patch("locust.rpc.rpc.Server", mocked_rpc_server()) as server:
+        with mock.patch("Load_Test.rpc.rpc.Server", mocked_rpc_server()) as server:
             master = MasterLocustRunner(MyTestLocust, self.options)
             for i in range(5):
                 server.mocked_send(Message("client_ready", None, "fake_client%i" % i))
@@ -228,7 +228,7 @@ class TestMasterRunner(LocustTestCase):
         class MyTestLocust(Locust):
             pass
         
-        with mock.patch("locust.rpc.rpc.Server", mocked_rpc_server()) as server:
+        with mock.patch("Load_Test.rpc.rpc.Server", mocked_rpc_server()) as server:
             master = MasterLocustRunner(MyTestLocust, self.options)
             for i in range(5):
                 server.mocked_send(Message("client_ready", None, "fake_client%i" % i))
