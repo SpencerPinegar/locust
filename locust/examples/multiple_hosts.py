@@ -23,7 +23,7 @@ class UserTasks(TaskSet):
     
 class WebsiteUser(MultipleHostsLocust):
     """
-    Locust user class that does requests to the Load_Test web server running on localhost
+    Locust user class that does requests to the API_Load_Test web server running on localhost
     """
     host = "http://127.0.0.1:8089"
     min_wait = 2000

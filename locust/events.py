@@ -78,7 +78,7 @@ Note that the keys "stats" and "errors" are used by Locust and shouldn't be over
 
 Event is fired with the following arguments:
 
-* *client_id*: The client id of the running Load_Test process.
+* *client_id*: The client id of the running API_Load_Test process.
 * *data*: Data dict that can be modified in order to attach data that should be sent to the master.
 """
 
@@ -87,17 +87,17 @@ slave_report = EventHook()
 *slave_report* is used when Locust is running in --master mode and is fired when the master
 server receives a report from a Locust slave server.
 
-This event can be used to aggregate data from the Load_Test slave servers.
+This event can be used to aggregate data from the API_Load_Test slave servers.
 
 Event is fired with following arguments:
 
-* *client_id*: Client id of the reporting Load_Test slave
+* *client_id*: Client id of the reporting API_Load_Test slave
 * *data*: Data dict with the data from the slave node
 """
 
 hatch_complete = EventHook()
 """
-*hatch_complete* is fired when all Load_Test users has been spawned.
+*hatch_complete* is fired when all API_Load_Test users has been spawned.
 
 Event is fire with the following arguments:
 
@@ -106,7 +106,7 @@ Event is fire with the following arguments:
 
 quitting = EventHook()
 """
-*quitting* is fired when the Load_Test process is exiting
+*quitting* is fired when the API_Load_Test process is exiting
 """
 
 master_start_hatching = EventHook()
@@ -125,10 +125,10 @@ This event is especially useful to detect when the 'stop' button is clicked on t
 
 locust_start_hatching = EventHook()
 """
-*locust_start_hatching* is fired when we initiate the hatching process on any Load_Test worker.
+*locust_start_hatching* is fired when we initiate the hatching process on any API_Load_Test worker.
 """
 
 locust_stop_hatching = EventHook()
 """
-*locust_stop_hatching* is fired when terminate the hatching process on any Load_Test worker.
+*locust_stop_hatching* is fired when terminate the hatching process on any API_Load_Test worker.
 """

@@ -1,10 +1,10 @@
 from unittest import TestCase
-from Load_Test.Config.config import Config
-from Load_Test.request_pool import _ReadOnlyRequestPool, RequestPoolFactory
-from Load_Test.test.api_test import APITest
+from API_Load_Test.Config.config import Config
+from API_Load_Test.request_pool import _ReadOnlyRequestPool, RequestPoolFactory
+from API_Load_Test.test.api_test import APITest
 import json
 import requests
-from Load_Test.Config.sql_route_statements import TEST_SQL_STATEMENTS
+from API_Load_Test.Config.sql_route_statements import TEST_SQL_STATEMENTS
 
 config = Config()
 
@@ -203,7 +203,7 @@ class TestReadOnlyRequestPool(APITest):
 class TestTwoStateRequestPool(APITest):
 
     def test_update_user_settings_v1(self):
-        route_name, version, env, clean_default, dirty_default = ("Update User Settings", 1, "DEV2", 599, 0)
+        route_name, version, env, clean_default, dirty_default = ("Update User Settings", 1, "DEV2", 599, 80085)
         abs_size = len(execute_test_sql_statement(route_name, env))
         self.assertGreater(abs_size, 100)
         pool, route = self.PoolFactory.get_update_user_settngs_pool_and_route(version, env, abs_size, abs_size)
@@ -232,7 +232,7 @@ class TestTwoStateRequestPool(APITest):
         reclean_state = execute_test_sql_statement(route_name, env)
         for user in reclean_state:
             self.assertEqual(user[1], clean_default)
-        pool.close()
+        pool.close(url)
 
 
 

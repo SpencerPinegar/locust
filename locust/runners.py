@@ -20,7 +20,7 @@ from .stats import global_stats
 
 logger = logging.getLogger(__name__)
 
-# global Load_Test runner singleton
+# global API_Load_Test runner singleton
 locust_runner = None
 
 STATE_INIT, STATE_HATCHING, STATE_RUNNING, STATE_CLEANUP, STATE_STOPPED = ["ready", "hatching", "running", "cleanup", "stopped"]
@@ -150,7 +150,7 @@ class LocustRunner(object):
             self.exceptions = {}
             events.locust_start_hatching.fire()
 
-        # Dynamically changing the Load_Test count
+        # Dynamically changing the API_Load_Test count
         if self.state != STATE_INIT and self.state != STATE_STOPPED:
             self.state = STATE_HATCHING
             if self.num_clients > locust_count:
@@ -249,7 +249,7 @@ class MasterLocustRunner(DistributedLocustRunner):
         self.greenlet = Group()
         self.greenlet.spawn(self.client_listener).link_exception(callback=self.noop)
         
-        # listener that gathers info on how many Load_Test users the slaves has spawned
+        # listener that gathers info on how many API_Load_Test users the slaves has spawned
         def on_slave_report(client_id, data):
             if client_id not in self.clients:
                 logger.info("Discarded report from unrecognized slave %s", client_id)
@@ -322,7 +322,7 @@ class MasterLocustRunner(DistributedLocustRunner):
                 logger.info("Client %r reported as ready. Currently %i clients ready to swarm." % (id, len(self.clients.ready)))
                 ## emit a warning if the slave's clock seem to be out of sync with our clock
                 #if abs(time() - msg.data["time"]) > 5.0:
-                #    warnings.warn("The slave node's clock seem to be out of sync. For the statistics to be correct the different Load_Test servers need to have synchronized clocks.")
+                #    warnings.warn("The slave node's clock seem to be out of sync. For the statistics to be correct the different API_Load_Test servers need to have synchronized clocks.")
             elif msg.type == "client_stopped":
                 del self.clients[msg.node_id]
                 if len(self.clients.hatching + self.clients.running) == 0:
@@ -361,7 +361,7 @@ class SlaveLocustRunner(DistributedLocustRunner):
         self.client.send(Message("client_ready", None, self.client_id))
         self.greenlet.spawn(self.stats_reporter).link_exception(callback=self.noop)
         
-        # register listener for when all Load_Test users have hatched, and report it to the master node
+        # register listener for when all API_Load_Test users have hatched, and report it to the master node
         def on_hatch_complete(user_count):
             self.client.send(Message("hatch_complete", {"count":user_count}, self.client_id))
         events.hatch_complete += on_hatch_complete
@@ -376,7 +376,7 @@ class SlaveLocustRunner(DistributedLocustRunner):
             self.client.send(Message("quit", None, self.client_id))
         events.quitting += on_quitting
 
-        # register listener thats sends Load_Test exceptions to master
+        # register listener thats sends API_Load_Test exceptions to master
         def on_locust_error(locust_instance, exception, tb):
             formatted_tb = "".join(traceback.format_tb(tb))
             self.client.send(Message("exception", {"msg" : str(exception), "traceback" : formatted_tb}, self.client_id))

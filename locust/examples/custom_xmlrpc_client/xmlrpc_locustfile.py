@@ -7,8 +7,8 @@ from locust import Locust, TaskSet, events, task
 class XmlRpcClient(xmlrpclib.ServerProxy):
     """
     Simple, sample XML RPC client implementation that wraps xmlrpclib.ServerProxy and 
-    fires Load_Test events on request_success and request_failure, so that all requests
-    gets tracked in Load_Test's statistics.
+    fires API_Load_Test events on request_success and request_failure, so that all requests
+    gets tracked in API_Load_Test's statistics.
     """
     def __getattr__(self, name):
         func = xmlrpclib.ServerProxy.__getattr__(self, name)

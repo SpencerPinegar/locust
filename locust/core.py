@@ -101,33 +101,33 @@ class Locust(object):
     Represents a "user" which is to be hatched and attack the system that is to be load tested.
     
     The behaviour of this user is defined by the task_set attribute, which should point to a 
-    :py:class:`TaskSet <Load_Test.core.TaskSet>` class.
+    :py:class:`TaskSet <API_Load_Test.core.TaskSet>` class.
     
     This class should usually be subclassed by a class that defines some kind of client. For 
     example when load testing an HTTP system, you probably want to use the 
-    :py:class:`HttpLocust <Load_Test.core.HttpLocust>` class.
+    :py:class:`HttpLocust <API_Load_Test.core.HttpLocust>` class.
     """
     
     host = None
     """Base hostname to swarm. i.e: http://127.0.0.1:1234"""
     
     min_wait = 1000
-    """Minimum waiting time between the execution of Load_Test tasks"""
+    """Minimum waiting time between the execution of API_Load_Test tasks"""
     
     max_wait = 1000
-    """Maximum waiting time between the execution of Load_Test tasks"""
+    """Maximum waiting time between the execution of API_Load_Test tasks"""
 
     wait_function = lambda self: random.randint(self.min_wait,self.max_wait) 
-    """Function used to calculate waiting time between the execution of Load_Test tasks in milliseconds"""
+    """Function used to calculate waiting time between the execution of API_Load_Test tasks in milliseconds"""
     
     task_set = None
-    """TaskSet class that defines the execution behaviour of this Load_Test"""
+    """TaskSet class that defines the execution behaviour of this API_Load_Test"""
     
     stop_timeout = None
     """Number of seconds after which the Locust will die. If None it won't timeout."""
 
     weight = 10
-    """Probability of Load_Test being chosen. The higher the weight, the greater is the chance of it being chosen."""
+    """Probability of API_Load_Test being chosen. The higher the weight, the greater is the chance of it being chosen."""
         
     client = NoClientWarningRaiser()
     _catch_exceptions = True
@@ -176,7 +176,7 @@ class HttpLocust(Locust):
     Represents an HTTP "user" which is to be hatched and attack the system that is to be load tested.
     
     The behaviour of this user is defined by the task_set attribute, which should point to a 
-    :py:class:`TaskSet <Load_Test.core.TaskSet>` class.
+    :py:class:`TaskSet <API_Load_Test.core.TaskSet>` class.
     
     This class creates a *client* attribute on instantiation which is an HTTP client with support 
     for keeping a user session between requests.
@@ -245,13 +245,13 @@ class TaskSet(object):
     instantiated and called from the current executing TaskSet. Execution in the
     currently running TaskSet will then be handed over to the nested TaskSet which will 
     continue to run until it throws an InterruptTaskSet exception, which is done when 
-    :py:meth:`TaskSet.interrupt() <Load_Test.core.TaskSet.interrupt>` is called. (execution
+    :py:meth:`TaskSet.interrupt() <API_Load_Test.core.TaskSet.interrupt>` is called. (execution
     will then continue in the first TaskSet).
     """
     
     tasks = []
     """
-    List with python callables that represents a Load_Test user task.
+    List with python callables that represents a API_Load_Test user task.
 
     If tasks is a list, the task to be performed will be picked randomly.
 
@@ -266,21 +266,21 @@ class TaskSet(object):
     
     min_wait = None
     """
-    Minimum waiting time between the execution of Load_Test tasks. Can be used to override 
+    Minimum waiting time between the execution of API_Load_Test tasks. Can be used to override 
     the min_wait defined in the root Locust class, which will be used if not set on the 
     TaskSet.
     """
     
     max_wait = None
     """
-    Maximum waiting time between the execution of Load_Test tasks. Can be used to override 
+    Maximum waiting time between the execution of API_Load_Test tasks. Can be used to override 
     the max_wait defined in the root Locust class, which will be used if not set on the 
     TaskSet.
     """
     
     wait_function = None
     """
-    Function used to calculate waiting time betwen the execution of Load_Test tasks in milliseconds. 
+    Function used to calculate waiting time betwen the execution of API_Load_Test tasks in milliseconds. 
     Can be used to override the wait_function defined in the root Locust class, which will be used
     if not set on the TaskSet.
     """
@@ -387,7 +387,7 @@ class TaskSet(object):
         self.execute_task(task["callable"], *task["args"], **task["kwargs"])
     
     def execute_task(self, task, *args, **kwargs):
-        # check if the function is a method bound to the current Load_Test, and if so, don't pass self as first argument
+        # check if the function is a method bound to the current API_Load_Test, and if so, don't pass self as first argument
         if hasattr(task, "__self__") and task.__self__ == self:
             # task is a bound method on self
             task(*args, **kwargs)
@@ -444,7 +444,7 @@ class TaskSet(object):
     @property
     def client(self):
         """
-        Reference to the :py:attr:`client <Load_Test.core.Locust.client>` attribute of the root
+        Reference to the :py:attr:`client <API_Load_Test.core.Locust.client>` attribute of the root
         Locust instance.
         """
         return self.locust.client
@@ -464,7 +464,7 @@ class TaskSequence(TaskSet):
     instantiated and called from the current executing TaskSet. Execution in the
     currently running TaskSet will then be handed over to the nested TaskSet which will
     continue to run until it throws an InterruptTaskSet exception, which is done when
-    :py:meth:`TaskSet.interrupt() <Load_Test.core.TaskSet.interrupt>` is called. (execution
+    :py:meth:`TaskSet.interrupt() <API_Load_Test.core.TaskSet.interrupt>` is called. (execution
     will then continue in the first TaskSet).
 
     In this class, tasks should be defined as a list, or simply define the tasks with the @seq_task decorator

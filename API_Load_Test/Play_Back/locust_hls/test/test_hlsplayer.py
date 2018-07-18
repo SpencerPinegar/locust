@@ -7,7 +7,7 @@ import time
 
 from mock import patch, Mock
 
-import Load_Test.locust_hls.hls3player as hlsplayer
+import API_Load_Test.locust_hls.hls3player as hlsplayer
 
 # allow sockets to be reused when we rerun tests
 SocketServer.TCPServer.allow_reuse_address = True

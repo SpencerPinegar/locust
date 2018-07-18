@@ -6,7 +6,7 @@ import logging
 import os
 import yaml #PYYAML
 import psycopg2 #psycopg2
-from Load_Test.Config.sql_route_statements import SQL_ROUTES_STATEMENTS
+from API_Load_Test.Config.sql_route_statements import SQL_ROUTES_STATEMENTS
 
 HERE = os.path.abspath(__file__)
 DIR_PATH = os.path.dirname(HERE)
@@ -41,7 +41,7 @@ class Config(object):
             Ex: [
                 "/rec/v1/user-franchise-recordings",
                 "/rec/v4/user-franchise-recordings",
-                ]
+                ]6R^R
         :param route_name: The name of the route
         """
         api_routes = {}

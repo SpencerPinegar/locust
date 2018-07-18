@@ -397,10 +397,10 @@ class TestWebLocustClass(WebserverTestCase):
             host = "http://127.0.0.1:%i" % self.port
 
         class MyAuthorizedLocust(HttpLocust):
-            host = "http://Load_Test:menace@127.0.0.1:%i" % self.port
+            host = "http://API_Load_Test:menace@127.0.0.1:%i" % self.port
 
         class MyUnauthorizedLocust(HttpLocust):
-            host = "http://Load_Test:wrong@127.0.0.1:%i" % self.port
+            host = "http://API_Load_Test:wrong@127.0.0.1:%i" % self.port
 
         locust = MyLocust()
         unauthorized = MyUnauthorizedLocust()

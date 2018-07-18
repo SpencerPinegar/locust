@@ -42,7 +42,7 @@ def on_request_success(request_type, name, response_time, response_length):
 def on_report_to_master(client_id, data):
     """
     This event is triggered on the slave instances every time a stats report is
-    to be sent to the Load_Test master. It will allow us to add our extra content-length
+    to be sent to the API_Load_Test master. It will allow us to add our extra content-length
     data to the dict that is being sent, and then we clear the local stats in the slave.
     """
     data["content-length"] = stats["content-length"]

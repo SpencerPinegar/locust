@@ -1,4 +1,4 @@
-# This Load_Test test script example will simulate a user
+# This API_Load_Test test script example will simulate a user
 # browsing the Locust documentation on https://docs.locust.io/
 
 import random
@@ -40,7 +40,7 @@ class BrowseDocumentationSequence(TaskSquence):
 
 class AwesomeUser(HttpLocust):
     task_set = BrowseDocumentationSequence
-    host = "https://docs.Load_Test.io/en/latest/"
+    host = "https://docs.API_Load_Test.io/en/latest/"
 
     # we assume someone who is browsing the Locust docs,
     # generally has a quite long waiting time (between

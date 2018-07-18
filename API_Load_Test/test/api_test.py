@@ -1,6 +1,6 @@
 from unittest import TestCase
-from Load_Test.Config.config import Config
-from Load_Test.request_pool import RequestPoolFactory
+from API_Load_Test.Config.config import Config
+from API_Load_Test.request_pool import RequestPoolFactory
 
 class APITest(TestCase):
 

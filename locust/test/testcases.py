@@ -69,7 +69,7 @@ def do_redirect():
 @app.route("/basic_auth")
 def basic_auth():
     auth = base64.b64decode(request.headers.get("Authorization", "").replace("Basic ", "")).decode('utf-8')
-    if auth == "Load_Test:menace":
+    if auth == "API_Load_Test:menace":
         return "Authorized"
     resp = make_response("401 Authorization Required", 401)
     resp.headers["WWW-Authenticate"] = 'Basic realm="Locust"'
@@ -110,7 +110,7 @@ def get_cookie():
 
 class LocustTestCase(unittest.TestCase):
     """
-    Test case class that restores Load_Test.events.EventHook listeners on tearDown, so that it is
+    Test case class that restores API_Load_Test.events.EventHook listeners on tearDown, so that it is
     safe to register any custom event handlers within the test.
     """
     def setUp(self):

@@ -27,7 +27,7 @@ class LocustResponse(Response):
 class HttpSession(requests.Session):
     """
     Class for performing web requests and holding (session-) cookies between requests (in order
-    to be able to log in and out of websites). Each request is logged so that Load_Test can display
+    to be able to log in and out of websites). Each request is logged so that API_Load_Test can display
     statistics.
     
     This is a slightly extended version of `python-request <http://python-requests.org>`_'s
@@ -104,7 +104,7 @@ class HttpSession(requests.Session):
         # prepend url with hostname unless it's already an absolute URL
         url = self._build_url(url)
         
-        # store meta data that is used when reporting the request to Load_Test's statistics
+        # store meta data that is used when reporting the request to API_Load_Test's statistics
         request_meta = {}
         
         # set up pre_request hook for attaching meta data to the request object
@@ -172,8 +172,8 @@ class ResponseContextManager(LocustResponse):
     control if an HTTP request should be marked as successful or a failure in Locust's statistics
     
     This class is a subclass of :py:class:`Response <requests.Response>` with two additional 
-    methods: :py:meth:`success <Load_Test.clients.ResponseContextManager.success>` and
-    :py:meth:`failure <Load_Test.clients.ResponseContextManager.failure>`.
+    methods: :py:meth:`success <API_Load_Test.clients.ResponseContextManager.success>` and
+    :py:meth:`failure <API_Load_Test.clients.ResponseContextManager.failure>`.
     """
     
     _is_reported = False

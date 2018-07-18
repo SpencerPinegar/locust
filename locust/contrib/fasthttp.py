@@ -55,7 +55,7 @@ class FastHttpLocust(Locust):
     Represents an HTTP "user" which is to be hatched and attack the system that is to be load tested.
     
     The behaviour of this user is defined by the task_set attribute, which should point to a 
-    :py:class:`TaskSet <Load_Test.core.TaskSet>` class.
+    :py:class:`TaskSet <API_Load_Test.core.TaskSet>` class.
     
     This class creates a *client* attribute on instantiation which is an HTTP client with support 
     for keeping a user session between requests.
@@ -123,7 +123,7 @@ class FastHttpSession(object):
                 headers=None, auth=None, **kwargs):
         """
         Send and HTTP request
-        Returns :py:class:`Load_Test.contrib.fasthttp.FastResponse` object.
+        Returns :py:class:`API_Load_Test.contrib.fasthttp.FastResponse` object.
 
         :param method: method for the new :class:`Request` object.
         :param path: Path that will be concatenated with the base host URL that has been specified.
@@ -148,7 +148,7 @@ class FastHttpSession(object):
         # prepend url with hostname unless it's already an absolute URL
         url = self._build_url(path)
         
-        # store meta data that is used when reporting the request to Load_Test's statistics
+        # store meta data that is used when reporting the request to API_Load_Test's statistics
         request_meta = {}
         # set up pre_request hook for attaching meta data to the request object
         request_meta["method"] = method
@@ -306,9 +306,9 @@ class ResponseContextManager(FastResponse):
     A Response class that also acts as a context manager that provides the ability to manually 
     control if an HTTP request should be marked as successful or a failure in Locust's statistics
     
-    This class is a subclass of :py:class:`FastResponse <Load_Test.contrib.fasthttp.FastResponse>`
-    with two additional methods: :py:meth:`success <Load_Test.contrib.fasthttp.ResponseContextManager.success>`
-    and :py:meth:`failure <Load_Test.contrib.fasthttp.ResponseContextManager.failure>`.
+    This class is a subclass of :py:class:`FastResponse <API_Load_Test.contrib.fasthttp.FastResponse>`
+    with two additional methods: :py:meth:`success <API_Load_Test.contrib.fasthttp.ResponseContextManager.success>`
+    and :py:meth:`failure <API_Load_Test.contrib.fasthttp.ResponseContextManager.failure>`.
     """
     
     _is_reported = False

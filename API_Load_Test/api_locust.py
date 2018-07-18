@@ -1,6 +1,6 @@
 from locust import HttpLocust, TaskSet, create_options, run_locust
-from Load_Test.request_pool import RequestPoolFactory
-from Load_Test.Config.config import Config
+from API_Load_Test.request_pool import RequestPoolFactory
+from API_Load_Test.Config.config import Config
 import logging
 
 logging.basicConfig(level=logging.DEBUG,
@@ -154,7 +154,7 @@ class APITasks(TaskSet):
 
 class APIUser(HttpLocust):
     """
-    Locust user class that does requests to the Load_Test web server running on localhost
+    Locust user class that does requests to the API_Load_Test web server running on localhost
     """
 
     min_wait = 0

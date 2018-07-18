@@ -31,7 +31,7 @@ def create_parser():
     """
 
     # Initialize
-    parser = OptionParser(usage="Load_Test [options] [LocustClass [LocustClass2 ... ]]")
+    parser = OptionParser(usage="API_Load_Test [options] [LocustClass [LocustClass2 ... ]]")
 
     parser.add_option(
         '-H', '--host',
@@ -72,22 +72,22 @@ def create_parser():
         help="Store current request stats to files in CSV format.",
     )
 
-    # if Load_Test should be run in distributed mode as master
+    # if API_Load_Test should be run in distributed mode as master
     parser.add_option(
         '--master',
         action='store_true',
         dest='master',
         default=False,
-        help="Set Load_Test to run in distributed mode with this process as master"
+        help="Set API_Load_Test to run in distributed mode with this process as master"
     )
 
-    # if Load_Test should be run in distributed mode as slave
+    # if API_Load_Test should be run in distributed mode as slave
     parser.add_option(
         '--slave',
         action='store_true',
         dest='slave',
         default=False,
-        help="Set Load_Test to run in distributed mode with this process as slave"
+        help="Set API_Load_Test to run in distributed mode with this process as slave"
     )
     
     # master host options
@@ -97,7 +97,7 @@ def create_parser():
         type='str',
         dest='master_host',
         default="127.0.0.1",
-        help="Host or IP address of Load_Test master for distributed load testing. Only used when running with --slave. Defaults to 127.0.0.1."
+        help="Host or IP address of API_Load_Test master for distributed load testing. Only used when running with --slave. Defaults to 127.0.0.1."
     )
     
     parser.add_option(
@@ -106,7 +106,7 @@ def create_parser():
         type='int',
         dest='master_port',
         default=5557,
-        help="The port to connect to that is used by the Load_Test master for distributed load testing. Only used when running with --slave. Defaults to 5557. Note that slaves will also connect to the master node on this port + 1."
+        help="The port to connect to that is used by the API_Load_Test master for distributed load testing. Only used when running with --slave. Defaults to 5557. Note that slaves will also connect to the master node on this port + 1."
     )
 
     parser.add_option(
@@ -115,7 +115,7 @@ def create_parser():
         type='str',
         dest='master_bind_host',
         default="*",
-        help="Interfaces (hostname, ip) that Load_Test master should bind to. Only used when running with --master. Defaults to * (all available interfaces)."
+        help="Interfaces (hostname, ip) that API_Load_Test master should bind to. Only used when running with --master. Defaults to * (all available interfaces)."
     )
     
     parser.add_option(
@@ -124,7 +124,7 @@ def create_parser():
         type='int',
         dest='master_bind_port',
         default=5557,
-        help="Port that Load_Test master should bind to. Only used when running with --master. Defaults to 5557. Note that Locust will also use this port + 1, so by default the master node will bind to 5557 and 5558."
+        help="Port that API_Load_Test master should bind to. Only used when running with --master. Defaults to 5557. Note that Locust will also use this port + 1, so by default the master node will bind to 5557 and 5558."
     )
 
     parser.add_option(
@@ -236,13 +236,13 @@ def create_parser():
         help="Reset statistics once hatching has been completed. Should be set on both master and slaves when running in distributed mode",
     )
     
-    # List Load_Test commands found in loaded Load_Test files/source files
+    # List API_Load_Test commands found in loaded API_Load_Test files/source files
     parser.add_option(
         '-l', '--list',
         action='store_true',
         dest='list_commands',
         default=False,
-        help="Show list of possible Load_Test classes and exit"
+        help="Show list of possible API_Load_Test classes and exit"
     )
     
     # Display ratio table of all tasks
@@ -251,7 +251,7 @@ def create_parser():
         action='store_true',
         dest='show_task_ratio',
         default=False,
-        help="print table of the Load_Test classes' task execution ratio"
+        help="print table of the API_Load_Test classes' task execution ratio"
     )
     # Display ratio table of all tasks in JSON format
     parser.add_option(
@@ -259,7 +259,7 @@ def create_parser():
         action='store_true',
         dest='show_task_ratio_json',
         default=False,
-        help="print json data of the Load_Test classes' task execution ratio"
+        help="print json data of the API_Load_Test classes' task execution ratio"
     )
     
     # Version number (optparse gives you --version but we have to do it
@@ -316,22 +316,22 @@ def create_options(
         run_time (str): Stop after the specified amount of time, e.g. (300s, 20m, 3h, 1h30m, etc.). Only used together with:no-web (default: None)
         num_clients (int): Number of concurrent Locust users. Only used together with no_web (default: 1)
         hatch_rate (int): The rate per second in which clients are spawned. Only used together with:no-web (default: 1)
-        master (bool): Set Load_Test to run in distributed mode with this process as master (default: False)
+        master (bool): Set API_Load_Test to run in distributed mode with this process as master (default: False)
         expect_slaves (int): How many slaves master should expect to connect before starting the test (only when no_web used). (default: 1)
-        master_bind_host (str): Interfaces (hostname, ip) that Load_Test master should bind to. Only used when running with master. Defaults all available interfaces. (default: '*')
-        master_bind_port (int): Port that Load_Test master should bind to. Only used when running with:master. Note that Locust will also use this port + 1, so by default the master node will bind to 5557 and 5558. (default: 5557)
-        slave (bool): Set Load_Test to run in distributed mode with this process as slave (default: False)
-        master_host (str): Host or IP address of Load_Test master for distributed load testing. Only used when running with slave. (default: '127.0.0.1')
-        master_port (int): The port to connect to that is used by the Load_Test master for distributed load testing. Only used when running with:slave. Note that slaves will also connect to the master node on this port + 1. (default: 5557)
+        master_bind_host (str): Interfaces (hostname, ip) that API_Load_Test master should bind to. Only used when running with master. Defaults all available interfaces. (default: '*')
+        master_bind_port (int): Port that API_Load_Test master should bind to. Only used when running with:master. Note that Locust will also use this port + 1, so by default the master node will bind to 5557 and 5558. (default: 5557)
+        slave (bool): Set API_Load_Test to run in distributed mode with this process as slave (default: False)
+        master_host (str): Host or IP address of API_Load_Test master for distributed load testing. Only used when running with slave. (default: '127.0.0.1')
+        master_port (int): The port to connect to that is used by the API_Load_Test master for distributed load testing. Only used when running with:slave. Note that slaves will also connect to the master node on this port + 1. (default: 5557)
         csvfilebase (str): Store current request stats to files in CSV format. (default: None)
         print_stats (bool): Print stats in the console (default: False)
         only_summary (bool): Only print the summary stats (default: False)
-        show_task_ratio (bool): print table of the Load_Test classes' task execution ratio (default: False)
-        show_task_ratio_json (bool): print json data of the Load_Test classes' task execution ratio (default: False)
+        show_task_ratio (bool): print table of the API_Load_Test classes' task execution ratio (default: False)
+        show_task_ratio_json (bool): print json data of the API_Load_Test classes' task execution ratio (default: False)
         logfile (str): Path to log file. If not set, log will go to stdout/stderr (default: None)
         loglevel (str): Choose between DEBUG/INFO/WARNING/ERROR/CRITICAL. (default: 'INFO')
         show_version (bool): show program's version number and exit (default: False)
-        list_commands (bool): Return list of possible Load_Test classes and exit (default: False)
+        list_commands (bool): Return list of possible API_Load_Test classes and exit (default: False)
         skip_log_setup (bool): Should logs be set up (default: False)
     """
 
@@ -500,7 +500,7 @@ def run_locust(options, arguments=[], cli_mode=False):
     Arguments:
         options (OptionParser): OptionParser object for defining Locust options. Obtain
             by either using the `create_options` function or running `parse_options` on 
-            an argv-style list using the Load_Test command-line format. Recommended to use
+            an argv-style list using the API_Load_Test command-line format. Recommended to use
             `create_options`.
         arguments (list)): List of Locust classes to include from those found.
     """
@@ -531,8 +531,8 @@ def run_locust(options, arguments=[], cli_mode=False):
 
     locusts = {}
     if locustfile:
-        if locustfile == "Load_Test.py":
-            locust_error("The locustfile must not be named `Load_Test.py`. Please rename the file and try again.")
+        if locustfile == "API_Load_Test.py":
+            locust_error("The locustfile must not be named `API_Load_Test.py`. Please rename the file and try again.")
         docstring, locusts = load_locustfile(locustfile)
     elif not options.locust_classes:
         locust_error("Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.")
@@ -542,7 +542,7 @@ def run_locust(options, arguments=[], cli_mode=False):
     for x in options.locust_classes:
         name = x.__name__
         if name in locusts:
-            locust_error("Duplicate Load_Test name {}.".format(name))
+            locust_error("Duplicate API_Load_Test name {}.".format(name))
         locusts[name] = x
 
     if options.list_commands:
@@ -569,7 +569,7 @@ def run_locust(options, arguments=[], cli_mode=False):
         locust_classes = list(locusts.values())
     
     if options.show_task_ratio:
-        console_logger.info("\n Task ratio per Load_Test class")
+        console_logger.info("\n Task ratio per API_Load_Test class")
         console_logger.info( "-" * 80)
         print_task_ratio(locust_classes)
         console_logger.info("\n Total task ratio")
@@ -646,7 +646,7 @@ def run_locust(options, arguments=[], cli_mode=False):
 
     def shutdown(code=0):
         """
-        Shut down Load_Test by firing quitting event, printing/writing stats and exiting
+        Shut down API_Load_Test by firing quitting event, printing/writing stats and exiting
         """
         logger.info("Shutting down (exit code %s), bye." % code)
 
