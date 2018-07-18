@@ -1,7 +1,7 @@
 from unittest import TestCase
 from Load_Test.Config.config import Config
 import os
-from Load_Test.Tests.api_test import APITest
+from Load_Test.test.api_test import APITest
 
 class TestConfig(APITest):
 

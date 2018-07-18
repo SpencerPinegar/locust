@@ -1,7 +1,7 @@
+import logging
 import random
 import sys
-import logging
-import Config.config
+
 import requests
 
 logging.basicConfig(level=logging.DEBUG,

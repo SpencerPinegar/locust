@@ -4,8 +4,8 @@ Most Recent Valid Testing: June 25, 2018
 """
 import logging
 import os
-import yaml
-import psycopg2
+import yaml #PYYAML
+import psycopg2 #psycopg2
 from Load_Test.Config.sql_route_statements import SQL_ROUTES_STATEMENTS
 
 HERE = os.path.abspath(__file__)

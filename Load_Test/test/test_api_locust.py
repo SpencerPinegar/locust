@@ -1,8 +1,9 @@
-from unittest import TestCase
-from Load_Test.api_locust import run_programmatically
 import os
+from unittest import TestCase
+
 import pandas
 
+from Load_Test.api_locust import run_programmatically
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 test_stats_folder = os.path.join(PARENT_DIR, "test_stats/")

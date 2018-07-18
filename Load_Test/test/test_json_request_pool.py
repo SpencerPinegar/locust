@@ -1,7 +1,7 @@
 from unittest import TestCase
 from Load_Test.Config.config import Config
 from Load_Test.request_pool import _ReadOnlyRequestPool, RequestPoolFactory
-from Load_Test.Tests.api_test import APITest
+from Load_Test.test.api_test import APITest
 import json
 import requests
 from Load_Test.Config.sql_route_statements import TEST_SQL_STATEMENTS
@@ -267,7 +267,7 @@ class TestTwoStateRequestPool(APITest):
         reclean_state = execute_test_sql_statement(route_name, env)
         for recording in reclean_state:
             self.assertEqual(recording[1], clean_default)
-        pool.close()
+        pool.close(url)
 
     def test_update_rules_v1(self):
         route_name, version, env, clean_default, dirty_default = ("Update Rules", 1, "DEV2", 2, 1)
@@ -299,7 +299,7 @@ class TestTwoStateRequestPool(APITest):
         reclean_state = execute_test_sql_statement(route_name, env)
         for recording in reclean_state:
             self.assertEqual(recording[0], clean_default)
-        pool.close()
+        pool.close(url)
 
 
 class TestInverseStateRequestPool(APITest):

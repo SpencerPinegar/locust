@@ -200,7 +200,7 @@ class TestMasterRunner(LocustTestCase):
     
     def test_spawn_uneven_locusts(self):
         """
-        Tests that we can accurately spawn a certain number of locusts, even if it's not an 
+        test that we can accurately spawn a certain number of locusts, even if it's not an
         even number of the connected slaves
         """
         import mock
