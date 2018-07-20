@@ -3,7 +3,7 @@ from unittest import TestCase
 
 import pandas
 
-from API_Load_Test.api_locust import run_programmatically
+from API_Load_Test.load_runner import LoadRunner
 
 PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
 test_stats_folder = os.path.join(PARENT_DIR, "test_stats/")
@@ -18,9 +18,9 @@ class TestAPILocust(TestCase):
 
     def run_load_route(self, route, version):
         try:
-            api_call_weight, env, node, normal_min, normal_max, runtime = ({route: 1},  "DEV2", 1, 5, 30, "10s")
-            run_programmatically(api_call_weight, env, node, version, normal_min, normal_max, 12, 11, runtime
-                                 , csvfilebase=test_stats_folder)
+            api_call_weight, env, node, normal_min, normal_max, runtime = ({route: 1},  "DEV2", 1, 5, 30, "15s")
+            LoadRunner.run_single_core(api_call_weight, env, node, version, normal_min, normal_max, 12, 11, runtime
+                                       , csvfilebase=test_stats_folder)
         except SystemExit:
             self.assertSetEqual(set(os.listdir(test_stats_folder)), {"_distribution.csv", "_requests.csv"}, "Locust was not able to create the neccesary statistics files")
             requests_file = pandas.read_csv(os.path.join(test_stats_folder, '_requests.csv'), delimiter=',', quotechar='"', index_col=False)
@@ -57,6 +57,9 @@ class TestAPILocust(TestCase):
 
     def test_list_rules_v1(self):
         self.run_load_route("List Rules", 1)
+
+    def test_do_nothing_cpu_used(self):
+        self.run_load_route("Nothing", 1)
 
 
 

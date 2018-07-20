@@ -31,7 +31,7 @@ def create_parser():
     """
 
     # Initialize
-    parser = OptionParser(usage="API_Load_Test [options] [LocustClass [LocustClass2 ... ]]")
+    parser = OptionParser(usage="locust [options] [LocustClass [LocustClass2 ... ]]")
 
     parser.add_option(
         '-H', '--host',
@@ -306,6 +306,8 @@ def create_options(
     """Create options objects for passing to `run_locust` when running Locust programmatically.
     
     Keyword Arguments:
+
+        ----- test/web info ----
         locustfile (str): Python module file to import, e.g. '../other.py'. (default 'locustfile')
         host (str): Host to load test in the following format: http://10.21.32.33 (default: None)
         locust_classes (list): Locust class callables if not importing from file (default: [])
@@ -316,13 +318,17 @@ def create_options(
         run_time (str): Stop after the specified amount of time, e.g. (300s, 20m, 3h, 1h30m, etc.). Only used together with:no-web (default: None)
         num_clients (int): Number of concurrent Locust users. Only used together with no_web (default: 1)
         hatch_rate (int): The rate per second in which clients are spawned. Only used together with:no-web (default: 1)
+
+        ----- master/slave info -----
         master (bool): Set API_Load_Test to run in distributed mode with this process as master (default: False)
+        slave (bool): Set API_Load_Test to run in distributed mode with this process as slave (default: False)
         expect_slaves (int): How many slaves master should expect to connect before starting the test (only when no_web used). (default: 1)
         master_bind_host (str): Interfaces (hostname, ip) that API_Load_Test master should bind to. Only used when running with master. Defaults all available interfaces. (default: '*')
         master_bind_port (int): Port that API_Load_Test master should bind to. Only used when running with:master. Note that Locust will also use this port + 1, so by default the master node will bind to 5557 and 5558. (default: 5557)
-        slave (bool): Set API_Load_Test to run in distributed mode with this process as slave (default: False)
         master_host (str): Host or IP address of API_Load_Test master for distributed load testing. Only used when running with slave. (default: '127.0.0.1')
         master_port (int): The port to connect to that is used by the API_Load_Test master for distributed load testing. Only used when running with:slave. Note that slaves will also connect to the master node on this port + 1. (default: 5557)
+
+        ------ stats/log info ------
         csvfilebase (str): Store current request stats to files in CSV format. (default: None)
         print_stats (bool): Print stats in the console (default: False)
         only_summary (bool): Only print the summary stats (default: False)

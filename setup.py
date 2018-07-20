@@ -6,15 +6,15 @@ import re
 from setuptools import find_packages, setup
 
 # parse version from API_Load_Test/__init__.py
-_version_re = re.compile(r'__version__\s+=\s+(.*)')
-_init_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "API_Load_Test", "__init__.py")
-with open(_init_file, 'rb') as f:
-    version = str(ast.literal_eval(_version_re.search(
-        f.read().decode('utf-8')).group(1)))
+# _version_re = re.compile(r'__version__\s+=\s+(.*)')
+# _init_file = os.path.join(os.path.abspath(os.path.dirname(__file__)), "API_Load_Test", "__init__.py")
+# with open(_init_file, 'rb') as f:
+#     version = str(ast.literal_eval(_version_re.search(
+#         f.read().decode('utf-8')).group(1)))
 
 setup(
     name='locustio',
-    version=version,
+    version=0.0,
     description="Website load testing framework",
     long_description="""Locust is a python utility for doing easy, distributed load testing of a web site""",
     classifiers=[
@@ -49,7 +49,9 @@ setup(
         "pyzmq>=16.0.2", 
         "geventhttpclient-wheels",
         'pandas>=0.23.3',
-        "PyYAML>=3.13"
+        "PyYAML>=3.13",
+        "psycopg2<=2.7.5",
+        "psutil>=5.4.6"
     ],
     test_suite="API_Load_Test.test",
     tests_require=['mock'],
