@@ -86,13 +86,13 @@ class LoadRunner:
 
     @staticmethod
     def _run_slave(api_call_weight={}, env="DEV2", version=1, min=0, max=None, no_web=True,
-                   reset_stats=False, master_info=("127.0.0.1", 5557), **kwargs):
+                   reset_stats=False, master_info=("127.0.0.1", 5557), node=0, **kwargs):
         # TODO: find way to distribute the init_data function between locusts on data sensitive info
         config = Config()
         pool_factory = RequestPoolFactory(config)
         master_host = master_info[0]
         master_port = master_info[1]
-        APITasks.init_data(api_call_weight, pool_factory, version, env, min, max)
+        APITasks.init_data(api_call_weight, pool_factory, version, node, env, min, max)
         APITasks.set_tasks(api_call_weight)
         options = create_options(locust_classes=[APIUser], no_web=no_web, reset_stats=reset_stats,
                                  skip_log_setup=True, loglevel="DEBUG",

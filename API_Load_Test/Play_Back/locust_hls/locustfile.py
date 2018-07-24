@@ -15,9 +15,6 @@ class HLS3Behavior(TaskSet):
     """
     url = "NOT_FOUND"
 
-    #def on_start(self):
-    #    if len(USER_CREDENTIALS) > 0:
-     #       self.url = USER_CREDENTIALS[0]
 
     def build_url(self):
         self.url ="http://d-gp2-dvrmfs-1111.rd.movetv.com/a29fbac42ae44a0385c879966a74d6d0/internal_master.m3u8#self.url" #make the HLS3Behavior
@@ -38,13 +35,7 @@ class HLS3User(hlsplayer.HLS3Locust):
     def __init__(self):
         super(HLS3User, self).__init__()
 
-    #def __init__(self):
-    #    super(HLS3User, self).__init__()
-    #    global USER_CREDENTIALS
-    #    if USER_CREDENTIALS == None:
-    #     with open('dvr_user_asset_info.csv', 'rb') as f:
-    #           reader = csv.reader(f)
-    #           USER_CREDENTIALS = list(reader)
+
 
 
 

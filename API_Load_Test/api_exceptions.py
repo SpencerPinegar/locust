@@ -1,6 +1,6 @@
 
 
-class LongResponseTimeException(Exception):
+class CMSTimeOut(Exception):
     """
     This Exception is returned when a response took longer than the max time
     """

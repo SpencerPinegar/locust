@@ -1,6 +1,7 @@
 import logging
 import json
-from API_Load_Test.api_exceptions import LongResponseTimeException, Non200ResponseCodeException
+from API_Load_Test.api_exceptions import CMSTimeOut, Non200ResponseCodeException
+from requests.exceptions import RequestException
 
 from locust import HttpLocust, TaskSet
 
@@ -22,7 +23,6 @@ class APITasks(TaskSet):
     def _user_recordings_ribbon(locust):
         json_data = APITasks.user_recordings_pool.get_json()
         APITasks.post_json_csm_copy(locust, json_data, APITasks.urr_url)
-        #locust.client.post(APITasks.urr_url, json=json_data)
 
 
 
@@ -94,11 +94,16 @@ class APITasks(TaskSet):
 
 
 
-    MAX_RESPONSE_TIME = 250 #TODO: make this come from test config file
+
+    BENCHMARK = .25 * SECONDS
+    SLOW = .5 * SECONDS
+    VERY_SLOW = 1 * SECONDS
+    USER_WAITING = 3 * SECONDS
+    CMS_TIMEOUT = 6 * SECONDS #TODO: make this come from test config file
 
 
     @classmethod
-    def init_data(cls, api_call_weight, pool_factory, version, env, normal_min, normal_max):
+    def init_data(cls, api_call_weight, pool_factory, version, node, env, normal_min, normal_max):
         """
         :param api_call_weight:
         :param pool_factory:
@@ -111,6 +116,7 @@ class APITasks(TaskSet):
         #TODO get node data and store it
         cls.env = env
         cls.version = version
+        cls.node = "VIP" if node is 0 else node
         for api_call in api_call_weight.keys():
             if api_call == "User Recordings Ribbon":
                 cls.user_recordings_pool, cls.urr_url = pool_factory.get_user_recordings_ribbon_pool_and_route(version, env,
@@ -182,18 +188,41 @@ class APITasks(TaskSet):
         :param url:
         :return:
         """
+
         header = {"Content-Type": "application/json", "Connection": "close"}
-        call_name = "{env}/{route}".format(env=APITasks.env, route=url) #TODO: store node in call name
+        call_name = "{env}-{node}--{route}".format(env=APITasks.env, node=APITasks.node, route=url) #TODO: store node in call name
 
         with locust.client.request("POST", url, name=call_name, catch_response=True, data=json.dumps(json_info), headers=header) as response:
-            if response.status_code is not 200:
-                response.failure(Non200ResponseCodeException())
-            elif response.locust_request_meta["response_time"] > APITasks.MAX_RESPONSE_TIME:
-                response.failure()
+            try:
+                response.raise_for_status()
+            except RequestException as e:
+                response.failure(e)
+            if response.locust_request_meta["response_time"] < APITasks.BENCHMARK:
+                response.locust_request_meta["name"] = "0 PASS < {time}ms: {name}".format(
+                    name=response.locust_request_meta["name"], time=APITasks.BENCHMARK)
+                response.success()
+            elif response.locust_request_meta["response_time"] < APITasks.SLOW:
+                response.locust_request_meta["name"] = "1 SLOW {below}ms -- {above}ms: {name}".format(
+                    name=response.locust_request_meta["name"], below=APITasks.BENCHMARK, above=APITasks.SLOW)
+                response.success()
+            elif response.locust_request_meta["response_time"] < APITasks.VERY_SLOW:
+                response.locust_request_meta["name"] = "2 VERY SLOW {below}ms -- {above}ms: {name}".format(
+                    name=response.locust_request_meta["name"], below=APITasks.SLOW, above=APITasks.VERY_SLOW)
+                response.success()
+            elif response.locust_request_meta["response_time"] < APITasks.USER_WAITING:
+                response.locust_request_meta["name"] = "3 USER WAIT {below}ms -- {above}ms: {name}".format(
+                    name=response.locust_request_meta["name"], below=APITasks.VERY_SLOW, above=APITasks.USER_WAITING)
+                response.success()
+            elif response.locust_request_meta["response_time"] < APITasks.CMS_TIMEOUT:
+                response.locust_request_meta["name"] = "4 LONG USER WAIT {below}ms -- {above}ms: {name}".format(
+                    name=response.locust_request_meta["name"], below=APITasks.USER_WAITING, above=APITasks.CMS_TIMEOUT)
+                response.success()
             else:
+                response.locust_request_meta["name"] = "5 TIMEOUT >{timeout}ms: {name}".format(
+                    name=response.locust_request_meta["name"], timeout=APITasks.CMS_TIMEOUT)
                 response.success()
 
-            response.close()
+
 
 
 
