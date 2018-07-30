@@ -16,6 +16,13 @@ SECONDS = 1000
 
 
 API_LOAD_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+PROJECT_DIR = os.path.dirname(API_LOAD_TEST_DIR)
+LOCALVENV_DIR = os.path.join(PROJECT_DIR, "localVenv")
+VENV_DIR = os.path.join(PROJECT_DIR, "venv")
+
+
 STATS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Stats")
 LOGS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Logs")
 
@@ -45,6 +52,7 @@ class LoadRunner:
         self.config = Config()
         self.no_web = False
         self.expected_slaves = 0
+        self.__set_virtual_env()
 
 
 
@@ -282,6 +290,21 @@ class LoadRunner:
                 undis_arg_string = "{undis_arg_string} --reset-stats".format(undis_arg_string=undis_arg_string)
 
         return shlex.split(undis_arg_string)
+
+
+
+
+    def __set_virtual_env(self):
+        activate_virtual_env_path = "bin/activate_this.py"
+        if os.path.isdir(LOCALVENV_DIR):
+
+            path = os.path.join(LOCALVENV_DIR, activate_virtual_env_path)
+            execfile(path, dict(__file__=path))
+        elif os.path.isdir(VENV_DIR):
+            path = os.path.join(VENV_DIR, activate_virtual_env_path)
+            execfile(path, dict(__file__=path))
+        else:
+            raise Exception("Could not find virutal env")
 
 
 

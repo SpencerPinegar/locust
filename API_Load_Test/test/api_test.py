@@ -15,10 +15,12 @@ class APITest(TestCase):
 
 
     PARENT_DIR = os.path.dirname(os.path.abspath(__file__))
-    API_STATS_DIR = os.path.dirname(PARENT_DIR)
+    API_LOAD_TEST_DIR = os.path.dirname(PARENT_DIR)
     test_stats_folder = os.path.join(PARENT_DIR, "test_stats/")
-    SLAVE_LOCUST_FILE = os.path.join(API_STATS_DIR, "api_locust.py")
-    MASTER_LOCUST_FILE = os.path.join(API_STATS_DIR, "master_locust.py")
+    SLAVE_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "api_locust.py")
+    MASTER_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "master_locust.py")
+
+
 
 
     def setUp(self):
@@ -54,6 +56,8 @@ class APITest(TestCase):
         self.master_host_info = ("127.0.0.1", 5557)
         self.web_ui_host_info = ("localhost", 8089)
         self.load_runner = LoadRunner(self.master_host_info, self.web_ui_host_info, APITest.SLAVE_LOCUST_FILE, APITest.MASTER_LOCUST_FILE)
+
+
 
 
 
@@ -130,7 +134,7 @@ class APITest(TestCase):
         loaded_r_file = pandas.read_csv(requests_file, delimiter=',', quotechar='"', index_col=False)
         if assert_results:
             self.assertEqual(loaded_r_file["# failures"].tail(1).values[0], 0, "There were more than 0 failures")
-            self.assertGreater(loaded_r_file["# requests"].tail(1).values[0], 1000,
+            self.assertGreater(loaded_r_file["# requests"].tail(1).values[0], 400,
                                "There were not enough requests sent out")
 
 
