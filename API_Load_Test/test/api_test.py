@@ -7,7 +7,7 @@ import requests
 from API_Load_Test.load_runner import LoadRunner
 import json
 import time
-from bs4 import BeautifulSoup
+from requests.exceptions import ConnectionError
 
 
 class APITest(TestCase):
@@ -75,7 +75,12 @@ class APITest(TestCase):
                                              stats_file_name="test", stats_folder=APITest.test_stats_folder,
                                              )
             time.sleep(1)
-            self.__run_from_ui()
+            try:
+                self.__run_from_ui()
+            except ConnectionError as e:
+                time.sleep(3)
+                self.__run_from_ui()
+
             time.sleep(15)
         else:
             self.load_runner.run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
@@ -83,8 +88,9 @@ class APITest(TestCase):
                                              no_web=True, reset_stats=True, num_clients=self.n_clients,
                                              hatch_rate=self.hatch_rate, run_time=self.time,
                                              stats_folder=APITest.test_stats_folder)
-            response_code = self.load_runner.close()
-            self.assertEqual(response_code, 0, "The process encountered errors and ended with a non-zero response code")
+            info_list, return_code_list = self.load_runner.close()
+            for index in range(len(info_list)):
+                self.assertEqual(return_code_list[index], 0, str(info_list[index]))
         self.__check_test_stats_folder(assert_results)
 
 
@@ -105,8 +111,9 @@ class APITest(TestCase):
                                             stats_file_name="test", stats_folder=APITest.test_stats_folder,
                                             no_web=True, reset_stats=True, num_clients=self.n_clients,
                                             hatch_rate=self.hatch_rate, run_time=self.time)
-            response_code = self.load_runner.close()
-            self.assertEqual(response_code, 0, "The process encountered errors and ended with a non-zero resonse code")
+            info_list, return_code_list = self.load_runner.close()
+            for index in range(len(info_list)):
+                self.assertEqual(return_code_list[index], 0, str(info_list[index]))
         self.__check_test_stats_folder(assert_results)
 
 

@@ -208,7 +208,7 @@ class APITasks(TaskSet):
         """
 
         header = {"Content-Type": "application/json", "Connection": "close"}
-        call_name = "{env}-{node}--{route}".format(env=APITasks.env, node=APITasks.node, route=url) #TODO: store node in call name
+        call_name = "{env}-{node}--{route}".format(env=APITasks.env, node=APITasks.node, route=url)
 
         with locust.client.request("POST", url, name=call_name, catch_response=True, data=json.dumps(json_info), headers=header) as response:
             try:

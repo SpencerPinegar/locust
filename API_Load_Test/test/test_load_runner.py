@@ -1,11 +1,5 @@
-
-from API_Load_Test.load_runner import LoadRunner
 from API_Load_Test.test.api_test import APITest
-import os
 
-API_LOAD_TEST_PATH = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-MASTER_LOCUST_FILE = os.path.join(API_LOAD_TEST_PATH, "master_locust.py")
-SLAVE_LOCUST_FILE = os.path.join(API_LOAD_TEST_PATH, "api_locust.py")
 
 
 

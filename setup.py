@@ -15,7 +15,7 @@ from setuptools import find_packages, setup
 setup(
     name='LoadRunner',
     version=0.0,
-    description="Load test API's",
+    description="Load test DVR API's",
     long_description="""Locust is a python utility for doing easy, distributed load testing of a web site""",
     classifiers=[
         "Topic :: Software Development :: Testing :: Traffic Generation",
@@ -33,7 +33,7 @@ setup(
         "Intended Audience :: System Administrators",
     ],
     keywords='',
-    author='Jonatan Heyman, Carl Bystrom, Joakim Hamrén, Hugo Heyman',
+    author='Spencer Pinegar',
     author_email='',
     url='https://API_Load_Test.io/',
     license='MIT',
@@ -50,11 +50,11 @@ setup(
         "geventhttpclient-wheels",
         'pandas>=0.23.3',
         "PyYAML>=3.13",
-        "psycopg2<=2.7.5",
+        "psycopg2-binary<=2.7.5",
         "psutil>=5.4.6",
-        'locustio>=0.8.1'
+        'locustio>=0.9.0.dev0'
     ],
-    dependency_links=["https://github.com/locustio/locust/tarball/master#egg=locustio-0.8.1"],
+    dependency_links=["https://github.com/locustio/locust/tarball/master#egg=locustio-0.9.0dev0"],
     test_suite="API_Load_Test.test",
     tests_require=['mock'],
     entry_points={

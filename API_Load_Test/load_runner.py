@@ -1,10 +1,10 @@
 import datetime
-import math
 import os
 import psutil
 import shlex
 import subprocess as sp
 import logging
+import math
 
 from API_Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
 from API_Load_Test.Config.config import Config
@@ -25,9 +25,13 @@ MASTER_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "master_locust.py")
 
 
 class LoadRunner:
-    assumed_concurrency_percentage_consumed = 3
+    assumed_load_average_added = 1
+    assumed_cpu_used = 7
     cpu_samples = 5
     stat_interval = 2
+#TODO: make a method to ensure the class is not running any proccesses from last run
+
+
 
 
 
@@ -49,7 +53,6 @@ class LoadRunner:
                        reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
                        stats_folder=None, log_folder=None):
 
-        # TODO: make rps have an influence on the number of expected slaves/clients so it is within the expected range
 
         self.no_web = no_web
         available_cores = self._avaliable_cpu_count()
@@ -82,8 +85,6 @@ class LoadRunner:
 
         undis_options = self._create_undistributed_options(env, node, stats_file_name, log_level, log_file_name, no_web, reset_stats,
                                                            num_clients, hatch_rate, run_time)
-        #TODO: make function that puts runner in clean state
-
         self.master = self._create_process(os_env.get_env(), undis_options)
 
 
@@ -106,13 +107,17 @@ class LoadRunner:
             self.__fresh_state()
             return None
         else:
+            info_list = []
             info = self.master.communicate()
+            info_list.append(info)
             return_codes = []
             return_codes.append(self.master.poll())
             for slave in self.slaves:
+                info = slave.communicate()
+                info_list.append(info)
                 return_codes.append(slave.poll())
             self.__fresh_state()
-            return max(return_codes)
+            return info_list, return_codes
 
 
 
@@ -137,16 +142,25 @@ class LoadRunner:
 
 
 
-    def _avaliable_cpu_count(cls):
+    def _avaliable_cpu_count(self):
         """
         Takes samples of the system CPU usage to determine how many CPU's must be allocated to current system priceless
         Returns the amount of available physical CPU's that can be used for load testing
         :return:
         """
-        # TODO: Make this number change based on cpu usage, avgLoad, etc:
         physical_cores = psutil.cpu_count(
             logical=False)  # Get the # of hardware cores -- HyperThreading wont make a difference
-        available_cores = math.floor(physical_cores * .6)
+        percentage_per_cpu = 100/physical_cores
+        idle_time_percentage = psutil.cpu_times_percent(LoadRunner.cpu_samples).idle - LoadRunner.assumed_cpu_used
+        available_cores_cpu = 0
+        while idle_time_percentage >= percentage_per_cpu:
+            idle_time_percentage -= percentage_per_cpu
+            available_cores_cpu += 1
+
+        load_avg = math.ceil(max(os.getloadavg()[:2]) + LoadRunner.assumed_load_average_added)
+        available_cores_load_avg = physical_cores - load_avg if physical_cores > load_avg else 0
+
+        available_cores = min(available_cores_cpu, available_cores_load_avg)
         return int(available_cores)
 
     def _get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
