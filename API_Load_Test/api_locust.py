@@ -1,9 +1,16 @@
-import logging
 import json
-from API_Load_Test.api_exceptions import CMSTimeOut, Non200ResponseCodeException
-from requests.exceptions import RequestException
+import logging
+import os
 
 from locust import HttpLocust, TaskSet
+import locust.stats
+from requests.exceptions import RequestException
+
+from API_Load_Test.Config.config import Config
+from API_Load_Test.environment_wrapper import EnvironmentWrapper
+from API_Load_Test.request_pool import RequestPoolFactory
+
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -19,6 +26,14 @@ SECONDS = 1000
 
 
 class APITasks(TaskSet):
+
+    expected_keys = ["API_CALL_WEIGHT", "VERSION", "NODE", "ENV", "N_MIN", "N_MAX", "STAT_INTERVAL"]
+
+
+    #TODO: make sure that this is supported, if not make it supported by importing from master
+    def setup(self):
+        APITasks.setup_based_on_env_vars()
+
 
     def _user_recordings_ribbon(locust):
         json_data = APITasks.user_recordings_pool.get_json()
@@ -103,60 +118,64 @@ class APITasks(TaskSet):
 
 
     @classmethod
-    def init_data(cls, api_call_weight, pool_factory, version, node, env, normal_min, normal_max):
-        """
-        :param api_call_weight:
-        :param pool_factory:
-        :param version:
-        :param env:
-        :param normal_min:
-        :param normal_max:
-        :return:
-        """
-        #TODO get node data and store it
-        cls.env = env
-        cls.version = version
+    def setup_based_on_env_vars(cls):
+        env_wrapper = EnvironmentWrapper(os.environ.copy())
+        for key in APITasks.expected_keys:
+            assert key in env_wrapper.keys()
+
+        cls.env = env_wrapper.get("ENV")
+        cls.version = env_wrapper.get("VERSION")
+        node = env_wrapper.get("NODE")
         cls.node = "VIP" if node is 0 else node
-        for api_call in api_call_weight.keys():
+        cls.api_call_weight = env_wrapper.get("API_CALL_WEIGHT")
+
+        normal_min = env_wrapper.get("N_MIN")
+        normal_max = env_wrapper.get("N_MAX")
+        stat_interval = env_wrapper.get("STAT_INTERVAL")
+        locust.stats.CSV_STATS_INTERVAL_SEC = stat_interval
+        pool_factory = RequestPoolFactory(Config(), [cls.env])
+
+        cls._set_tasks()
+        for api_call in cls.api_call_weight.keys():
             if api_call == "User Recordings Ribbon":
-                cls.user_recordings_pool, cls.urr_url = pool_factory.get_user_recordings_ribbon_pool_and_route(version, env,
+                cls.user_recordings_pool, cls.urr_url = pool_factory.get_user_recordings_ribbon_pool_and_route(cls.version, cls.env,
                                                                                                        normal_min,
                                                                                                        normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
 
             elif api_call == "User Franchise Ribbon":
-                cls.user_franchise_pool, cls.ufr_url = pool_factory.get_user_franchise_ribbon_pool_and_route(version, env,
+                cls.user_franchise_pool, cls.ufr_url = pool_factory.get_user_franchise_ribbon_pool_and_route(cls.version, cls.env,
                                                                                                              normal_min,
                                                                                                              normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
 
             elif api_call == "User Recspace Information":
-                cls.user_recspace_info_pool, cls.uri_url = pool_factory.get_user_recspace_information_pool_and_route(version,
-                                                                                                             env,
+                cls.user_recspace_info_pool, cls.uri_url = pool_factory.get_user_recspace_information_pool_and_route(cls.version,
+                                                                                                             cls.env,
                                                                                                              normal_min,
                                                                                                              normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
 
             elif api_call == "Update User Settings":
-                cls.update_user_settings_pool, cls.uus_url = pool_factory.get_update_user_settngs_pool_and_route(version, env,
+                cls.update_user_settings_pool, cls.uus_url = pool_factory.get_update_user_settngs_pool_and_route(cls.version, cls.env,
                                                                                                          normal_min,
                                                                                                          normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
             elif api_call == "Protect Recordings":
-                cls.protect_recordings_pool, cls.pr_url = pool_factory.get_protect_recordings_pool_and_route(version, env,
+                cls.protect_recordings_pool, cls.pr_url = pool_factory.get_protect_recordings_pool_and_route(cls.version, cls.env,
                                                                                                      normal_min,
                                                                                                      normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
             elif api_call == "Mark Watched":
-                cls.marked_watched_pool, cls.mw_url = pool_factory.get_mark_watched_pool_and_route(version, env, normal_min,
+                cls.marked_watched_pool, cls.mw_url = pool_factory.get_mark_watched_pool_and_route(cls.version, cls.env, normal_min,
                                                                                            normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
             elif api_call == "Update Rules":
-                cls.update_rules_pool, cls.ur_url = pool_factory.get_update_rules_pool_and_route(version, env, normal_min,
+                cls.update_rules_pool, cls.ur_url = pool_factory.get_update_rules_pool_and_route(cls.version, cls.env, normal_min,
                                                                                          normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
             elif api_call == "List Rules":
-                cls.list_rules_pool, cls.lr_url = pool_factory.get_list_rules_pool_and_route(version, env, normal_min, normal_max)
+                cls.list_rules_pool, cls.lr_url = pool_factory.get_list_rules_pool_and_route(cls.version, cls.env, normal_min, normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
             elif api_call == "Nothing":
                 logger.debug("Set up {0} Info".format(api_call))
@@ -164,15 +183,14 @@ class APITasks(TaskSet):
                 logger.error("{0} is not a valid API call - valid api calls {1}".format(api_call, APITasks._task_method_realtion.keys()))
 
 
-
     @classmethod
-    def set_tasks(cls, api_call_weight):
+    def _set_tasks(cls):
         tasks_to_be = []
-        for api_call in api_call_weight.keys():
+        for api_call in cls.api_call_weight.keys():
             api_call = api_call.title()
             if api_call not in APITasks._task_method_realtion.keys():
                 logger.error("{0} is not a valid api call".format(api_call))
-            for add_task_count in range(api_call_weight[api_call]):
+            for add_task_count in range(cls.api_call_weight[api_call]):
                 tasks_to_be.append(APITasks._task_method_realtion[api_call])
         cls.tasks = tasks_to_be
         logger.debug("tasks set to {0}".format(tasks_to_be))
@@ -235,13 +253,7 @@ class APIUser(HttpLocust):
     max_wait = 1 * SECONDS
     task_set = APITasks
 
-class EmptyTaskSet(TaskSet):
-    pass
 
-class MasterUser(HttpLocust):
-    min_wait = 0
-    max_wait = 0
-    task_set = EmptyTaskSet
 
 
 

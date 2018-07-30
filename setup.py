@@ -13,9 +13,9 @@ from setuptools import find_packages, setup
 #         f.read().decode('utf-8')).group(1)))
 
 setup(
-    name='locustio',
+    name='LoadRunner',
     version=0.0,
-    description="Website load testing framework",
+    description="Load test API's",
     long_description="""Locust is a python utility for doing easy, distributed load testing of a web site""",
     classifiers=[
         "Topic :: Software Development :: Testing :: Traffic Generation",
@@ -51,8 +51,10 @@ setup(
         'pandas>=0.23.3',
         "PyYAML>=3.13",
         "psycopg2<=2.7.5",
-        "psutil>=5.4.6"
+        "psutil>=5.4.6",
+        'locustio>=0.8.1'
     ],
+    dependency_links=["https://github.com/locustio/locust/tarball/master#egg=locustio-0.8.1"],
     test_suite="API_Load_Test.test",
     tests_require=['mock'],
     entry_points={
@@ -60,4 +62,5 @@ setup(
             'API_Load_Test = API_Load_Test.main:main',
         ]
     },
+
 )
