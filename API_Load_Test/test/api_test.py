@@ -66,7 +66,7 @@ class APITest(TestCase):
             self.PoolFactory.close()
         except:
             pass
-        self.load_runner.close()
+        self.load_runner.stop_test()
 
 
 
@@ -92,7 +92,7 @@ class APITest(TestCase):
                                              no_web=True, reset_stats=True, num_clients=self.n_clients,
                                              hatch_rate=self.hatch_rate, run_time=self.time,
                                              stats_folder=APITest.test_stats_folder)
-            info_list, return_code_list = self.load_runner.close()
+            info_list, return_code_list = self.load_runner.stop_test()
             for index in range(len(info_list)):
                 self.assertEqual(return_code_list[index], 0, str(info_list[index]))
         self.__check_test_stats_folder(assert_results)
@@ -115,7 +115,7 @@ class APITest(TestCase):
                                             stats_file_name="test", stats_folder=APITest.test_stats_folder,
                                             no_web=True, reset_stats=True, num_clients=self.n_clients,
                                             hatch_rate=self.hatch_rate, run_time=self.time)
-            info_list, return_code_list = self.load_runner.close()
+            info_list, return_code_list = self.load_runner.stop_test()
             for index in range(len(info_list)):
                 self.assertEqual(return_code_list[index], 0, str(info_list[index]))
         self.__check_test_stats_folder(assert_results)

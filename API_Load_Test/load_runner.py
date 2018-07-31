@@ -5,6 +5,7 @@ import shlex
 import subprocess as sp
 import logging
 import math
+from api_exceptions import LoadRunnerFailedClose
 
 from API_Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
 from API_Load_Test.Config.config import Config
@@ -36,6 +37,8 @@ class LoadRunner:
     assumed_cpu_used = 7
     cpu_samples = 5
     stat_interval = 2
+    per_process_used_cpu_running_threshold = 5 #TODO Find actual threshold
+    process_age_limit = 2 #TODO Find process age limit
 #TODO: make a method to ensure the class is not running any proccesses from last run
 
 
@@ -53,6 +56,7 @@ class LoadRunner:
         self.no_web = False
         self.expected_slaves = 0
         self.__set_virtual_env()
+
 
 
 
@@ -75,9 +79,12 @@ class LoadRunner:
         slave_options = self._create_slave_options(env, node, reset_stats)
 
         self.master = self._create_process(os_env.get_env(), master_options)
+
+        to_be_slaves = []
         for index in range(self.expected_slaves):
             slave = self._create_process(os_env.get_env(), slave_options)
-            self.slaves.append(slave)
+            to_be_slaves.append(slave)
+        self.slaves = to_be_slaves
 
 
     def run_distributed(cls, rps, api_call_weight, env, node, version, min, max):
@@ -98,13 +105,29 @@ class LoadRunner:
 
 
 
-    def close(self):
-        if self.no_web:
-            return self._wait_till_done()
-        #TODO: find way to check status of web_ui locust and return -- returning zero for now
+    def is_test_currently_running(self):
+        children = self.children
+        usage = 0
+        for child in children:
+            usage += child.cpu_percent(5)
+        if usage/len(children) <= LoadRunner.per_process_used_cpu_running_threshold:
+            self.stop_test()
+            return False
         else:
-            self.__fresh_state()
-            return 0
+            return True
+
+
+    def stop_test(self):
+        try:
+            if self.no_web:
+                info_list, return_codes = self._wait_till_done()
+                self.__fresh_state()
+                return info_list, return_codes
+            else:
+                self.__fresh_state()
+                return 0
+        except:
+            raise
 
 
 
@@ -124,7 +147,6 @@ class LoadRunner:
                 info = slave.communicate()
                 info_list.append(info)
                 return_codes.append(slave.poll())
-            self.__fresh_state()
             return info_list, return_codes
 
 
@@ -135,6 +157,9 @@ class LoadRunner:
            self._safe_kill(slave)
         self.master = None
         self.slaves = []
+        if not self._child_processes():
+            raise LoadRunnerFailedClose("unsuccesfully closed all child proccesses")
+
 
 
     def _safe_kill(self, process):
@@ -142,11 +167,18 @@ class LoadRunner:
             return
         try:
             process.kill()
+            process.wait()
         except OSError as e:
             if e.strerror == "No such process":
                 pass
             else:
                 raise e
+
+
+
+
+
+
 
 
 
@@ -170,6 +202,7 @@ class LoadRunner:
 
         available_cores = min(available_cores_cpu, available_cores_load_avg)
         return int(available_cores)
+
 
     def _get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
         if stats_folder is not None and stats_file_name is not None:
@@ -198,6 +231,10 @@ class LoadRunner:
         return todays_file
 
 
+    def _child_processes(self):
+        current_process = psutil.Process()
+        children = current_process.children(recursive=True)
+        return children
 
 
     def _create_process(self, os_env, options):
@@ -307,10 +344,61 @@ class LoadRunner:
             raise Exception("Could not find virutal env")
 
 
+    @property
+    def master(self):
+        return self._master
+
+
+    @master.setter
+    def master(self, value):
+        if not self.children:
+            raise LoadRunnerFailedClose("Overrding Master child process prior to closing it, this will result in zombie processes")
+        if not isinstance(value, sp.Popen) and value is not None:
+            raise ValueError("You cannot assign the master process a value that is not a subprocess or None")
+        self._master = value
+
+
+    @property
+    def slaves(self):
+        return self._slaves
+
+
+    @slaves.setter
+    def slaves(self, value):
+        if not self.children:
+            raise LoadRunnerFailedClose("Overriding Slave child processes prior to closing it, this will result in zombie processes")
+        if not isinstance(value, list):
+            raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
+        for process in value:
+            if not isinstance(process, sp.Popen):
+                raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
+        self._slaves = value
+
+    @property
+    def no_web(self):
+        return self._no_web
+
+    @no_web.setter
+    def no_web(self, value):
+        if self._no_web is None:
+            self._no_web = value
+        else:
+            if not self.master or not self.slaves:
+                raise LoadRunnerFailedClose("You can not change the web status of a test without closing the previous test")
+
+    @property
+    def children(self):
+        return self._child_processes()
 
 
 
 
-if __name__ == "__main__":
-    pass
-# TODO: put easy entry
+
+
+
+
+
+
+
+
+
