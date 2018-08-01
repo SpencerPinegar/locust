@@ -95,32 +95,32 @@ class TestConfig(APITest):
 
     def test_is_api_env(self):
         for env in self.expected_api_env:
-            self.assertTrue(self.config._is_api_env(env))
-        self.assertFalse(self.config._is_api_env("NOTAPIENV"))
+            self.assertTrue(self.config.is_api_env(env))
+        self.assertFalse(self.config.is_api_env("NOTAPIENV"))
 
 
     def test_is_node(self):
         for env in self.expected_api_env:
             max_node = self.config._quick_api_env[env]["Total Nodes"]
             min_node = 0
-            self.assertTrue(self.config._is_node(env, max_node))
-            self.assertTrue(self.config._is_node(env, min_node))
-            self.assertTrue(self.config._is_node(env, max_node - 1))
-            self.assertFalse(self.config._is_node(env, max_node + 1))
-            self.assertFalse(self.config._is_node(env, min_node - 1))
+            self.assertTrue(self.config.is_node(env, max_node))
+            self.assertTrue(self.config.is_node(env, min_node))
+            self.assertTrue(self.config.is_node(env, max_node - 1))
+            self.assertFalse(self.config.is_node(env, max_node + 1))
+            self.assertFalse(self.config.is_node(env, min_node - 1))
 
 
     def test_is_route(self):
         for route in self.expected_routes:
-            self.assertTrue(self.config._is_route(route))
-        self.assertFalse(self.config._is_route("ISNOTROUTE"))
+            self.assertTrue(self.config.is_route(route))
+        self.assertFalse(self.config.is_route("ISNOTROUTE"))
 
     def test_is_version(self):
         for route in self.expected_routes:
             info = self.config._get_route_info(route)
             for version in info["Versions"]:
-                self.assertTrue(self.config._is_version(route, version))
-                self.assertFalse(self.config._is_version(route, 0))
+                self.assertTrue(self.config.is_version(route, version))
+                self.assertFalse(self.config.is_version(route, 0))
 
     def test_get_host(self):
         for env in self.expected_api_env:

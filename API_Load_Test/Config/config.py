@@ -77,7 +77,7 @@ class Config(object):
         """
         version_info = {}
         route_name = route_name.title()
-        if self._is_route(route_name):
+        if self.is_route(route_name):
             for version in self.get_route_versions(route_name):
                  version_info.setdefault(version, self._get_route_info(route_name)["Version {0}".format(version)])
         return version_info
@@ -127,8 +127,8 @@ class Config(object):
     def get_api_route(self, route_name, version):
         route_name = route_name.title()
         assert isinstance(version, int)
-        if self._is_route(route_name):
-            if self._is_version(route_name, version):
+        if self.is_route(route_name):
+            if self.is_version(route_name, version):
                 partial_route = self._quick_routes[route_name]["Route"]
                 complete_route = "/rec/v{0}/{1}/".format(version, partial_route)
                 return complete_route
@@ -139,8 +139,8 @@ class Config(object):
         env = env.upper()
 
         assert isinstance(node, int)
-        if self._is_api_env(env):
-            if self._is_node(env, node):
+        if self.is_api_env(env):
+            if self.is_node(env, node):
                 host = "http://{0}".format(self._get_host(env, node))
                 return host
 
@@ -198,7 +198,7 @@ class Config(object):
         return host
 
 
-    def _is_version(self, route_name, version):
+    def is_version(self, route_name, version):
         if version in self.get_route_versions(route_name):
             self._verbose_log("Found Version {0} for Route {1}".format(version, route_name))
             return True
@@ -206,7 +206,7 @@ class Config(object):
             Config._error_param_not_found("Version", version, "{0} Versions {1}".format(route_name, self.get_route_versions(route_name)))
             return False
 
-    def _is_route(self, route_name):
+    def is_route(self, route_name):
         if route_name in self.api_routes:
             self._verbose_log("Found Route Name {0}".format(route_name))
             return True
@@ -214,7 +214,7 @@ class Config(object):
             Config._error_param_not_found("Route Name", route_name, self.api_routes)
             return False
 
-    def _is_node(self, env, node):
+    def is_node(self, env, node):
         if 0 <= node <= self.get_total_api_nodes(env):
             self._verbose_log("Found Node {0}".format(node))
             return True
@@ -222,7 +222,7 @@ class Config(object):
             Config._error_param_not_found("Node", node, "0 - {0}".format(self.get_total_api_nodes(env)))
             return False
 
-    def _is_api_env(self, Env):
+    def is_api_env(self, Env):
         if Env in self.api_envs:
             self._verbose_log("Found API Env {0}".format(Env))
             return True

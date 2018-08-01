@@ -134,7 +134,7 @@ class APITest(TestCase):
         loaded_r_file = pandas.read_csv(requests_file, delimiter=',', quotechar='"', index_col=False)
         if assert_results:
             self.assertEqual(loaded_r_file["# failures"].tail(1).values[0], 0, "There were more than 0 failures")
-            self.assertGreater(loaded_r_file["# requests"].tail(1).values[0], 400,
+            self.assertGreaterEqual(loaded_r_file["# requests"].tail(1).values[0], 400,
                                "There were not enough requests sent out")
 
 

@@ -86,8 +86,7 @@ class LoadRunner:
         self.slaves = to_be_slaves
 
 
-    def run_distributed(cls, rps, api_call_weight, env, node, version, min, max):
-        pass
+
 
     def run_single_core(self, api_call_weight, env, node, version, min, max, stats_file_name=None, log_level=None, log_file_name=None,
                         no_web=False, reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
@@ -137,7 +136,7 @@ class LoadRunner:
     def _wait_till_done(self):
         if self.master is None:
             self.__fresh_state()
-            return None
+            return [], []
         else:
             info_list = []
             info = self.master.communicate()
@@ -158,7 +157,7 @@ class LoadRunner:
            self._safe_kill(slave)
         self.master = None
         self.slaves = []
-        if self._child_processes():
+        if self.children:
             raise LoadRunnerFailedClose("unsuccesfully closed all child proccesses")
 
 
