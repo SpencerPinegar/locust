@@ -55,7 +55,7 @@ class APITest(TestCase):
         self.exp_slaves = 16
         self.master_host_info = ("127.0.0.1", 5557)
         self.web_ui_host_info = ("localhost", 8089)
-        self.load_runner = LoadRunner(self.master_host_info, self.web_ui_host_info, APITest.SLAVE_LOCUST_FILE, APITest.MASTER_LOCUST_FILE)
+        self.load_runner = LoadRunner(self.master_host_info, self.web_ui_host_info, APITest.SLAVE_LOCUST_FILE, APITest.MASTER_LOCUST_FILE, self.config)
 
 
 

@@ -8,7 +8,6 @@ import math
 from api_exceptions import LoadRunnerFailedClose
 
 from API_Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
-from API_Load_Test.Config.config import Config
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S')
@@ -45,14 +44,14 @@ class LoadRunner:
 
 
 
-    def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file):
+    def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config):
         self.master = None
         self.slaves = []
         self.master_locust_file = master_locust_file
         self.slave_locust_file = slave_locust_file
         self.master_host_info = master_host_info
         self.web_ui_host_info = web_ui_info
-        self.config = Config()
+        self.config = config
         self.no_web = False
         self.expected_slaves = 0
         self.__set_virtual_env()
@@ -105,8 +104,10 @@ class LoadRunner:
 
 
 
-    def is_test_currently_running(self):
+    def test_currently_running(self):
         children = self.children
+        if self.no_web is True and children:
+            return True
         usage = 0
         for child in children:
             usage += child.cpu_percent(5)
@@ -157,7 +158,7 @@ class LoadRunner:
            self._safe_kill(slave)
         self.master = None
         self.slaves = []
-        if not self._child_processes():
+        if self._child_processes():
             raise LoadRunnerFailedClose("unsuccesfully closed all child proccesses")
 
 

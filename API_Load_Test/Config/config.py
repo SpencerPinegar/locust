@@ -28,11 +28,29 @@ class Config(object):
 
         self.debug = debug
         self._settings = self._build_settings()
-        self.api_envs = self._settings["RecAPI Settings"]["Environments"].keys()
-        self.api_routes = self._settings["RecAPI Settings"]["Routes"].keys()
-
         self._quick_routes = self._settings["RecAPI Settings"]["Routes"]
         self._quick_api_env = self._settings["RecAPI Settings"]["Environments"]
+
+
+
+
+    @property
+    def settings(self):
+        return self._settings
+
+
+    @property
+    def api_envs(self):
+        return self.settings["RecAPI Settings"]["Environments"].keys()
+
+
+    @property
+    def api_routes(self):
+        return self.settings["RecAPI Settings"]["Routes"].keys()
+
+
+
+
 
 
     def get_api_routes(self, route_name):
@@ -94,7 +112,7 @@ class Config(object):
 
     def get_db_connection(self, Env):
         env = Env.upper()
-        db_envs = self._settings["DataBase Settings"]["Environments"].keys()
+        db_envs = self.settings["DataBase Settings"]["Environments"].keys()
         if env in db_envs:
             name, user, pw, host, port = self._get_db_info(env)
             conn = psycopg2.connect(database=name, user=user, password=pw, host=host, port=port)
@@ -138,12 +156,12 @@ class Config(object):
         return self._quick_routes[route]["Versions"]
 
     def get_db_environments(self):
-        return self._settings["DataBase Settings"]["Environments"].keys()
+        return self.settings["DataBase Settings"]["Environments"].keys()
 
 
     def _get_db_info(self, Env):
-        env_info = self._settings["DataBase Settings"]["Environments"][Env]
-        cred_info = self._settings["DataBase Settings"]["Credentials"]
+        env_info = self.settings["DataBase Settings"]["Environments"][Env]
+        cred_info = self.settings["DataBase Settings"]["Credentials"]
         name = cred_info["DataBase Name"]
         user = cred_info["DataBase Username"]
         pw = cred_info["DataBase Password"]
