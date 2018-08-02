@@ -1,45 +1,58 @@
-from flask import Flask
+from flask import Flask, request
 from flask_jsonrpc import JSONRPC
-from API_Load_Test.load_runner_api_wrapper import TestAPIWrapper
+from API_Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from API_Load_Test.load_runner import LoadRunner
+from API_Load_Test.Config.config import Config
+
+
 # TODO: make Initial LoadRunner Variables come from config file
-
+#TODO: make api extension come from config file
+extension = '/LoadServer'
 app = Flask(__name__)
-jsonrpc = JSONRPC(app, '/LoadServer', enable_web_browsable_api=True)
-test_api_wrapper = TestAPIWrapper()
+jsonrpc = JSONRPC(app, extension, enable_web_browsable_api=True)
+config = Config()
+load_runner = LoadRunner(LoadRunnerAPIWrapper.master_host_info, LoadRunnerAPIWrapper.web_ui_host_info,
+                         LoadRunnerAPIWrapper.Slave_Locust_File, LoadRunnerAPIWrapper.Master_Locust_File, config)
+test_api_wrapper = LoadRunnerAPIWrapper(config, LoadRunnerAPIWrapper)
 
 
 
-
-@jsonrpc.method('App.argsValidateJSONMode(a1=Number, a2=String, a3=Boolean, a4=Array, a5=Object) -> Object',
-                validate=True)
-def args_validate_json_mode(a1, a2, a3, a4, a5):
-    return u'Number: {0}, String: {1}, Boolean: {2}, Array: {3}, Object: {4}'.format(a1, a2, a3, a4, a5)
-
-
-@jsonrpc.method('App.argsValidatePythonMode(a1=int, a2=str, a3=bool, a4=list, a5=dict) -> object')
-def args_validate_python_mode(a1, a2, a3, a4, a5):
-    return u'int: {0}, str: {1}, bool: {2}, list: {3}, dict: {4}'.format(a1, a2, a3, a4, a5)
+@jsonrpc.method("stop_test() -> dict")
+def kill():
+    test_api_wrapper.stop_tests()
+    return test_api_wrapper.is_running()
 
 
-@jsonrpc.method("ping")
+@jsonrpc.method("ping() -> str")
 def ping():
     return u"alive"
 
 
 @jsonrpc.method("isTestRunning() -> dict")
 def is_test_running():
-    return test_api_wrapper.is_test_running()
+    return test_api_wrapper.is_running()
 
 
 
 @jsonrpc.method("startManuelTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int) -> str", validate=True)
 def start_manuel_test(api_call_weight, env, node, version, n_min, n_max):
     test_api_wrapper.start_manuel_test(api_call_weight, env, node, version, n_min, n_max)
-    return test_api_wrapper.verify_started()
+    return test_api_wrapper.is_setup()
 
 @jsonrpc.method("startBenchmarkTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int,"
                 "num_clients=int, hatch_rate=float, run_time=str, reset_stats=bool) -> str", validate=True)
 def start_benchmark_test(api_call_weight, env, node, version, n_min, n_max, num_clients, hatch_rate, run_time, reset_stats):
     test_api_wrapper.start_benchmark_test(api_call_weight, env, node, version, n_min, n_max, num_clients, hatch_rate,
                                           run_time, reset_stats)
-    return test_api_wrapper.verify_started()
+    return test_api_wrapper.is_setup()
+
+
+
+def start_app():
+    app.run(host=LoadRunnerAPIWrapper.web_api_host_info[0], port=LoadRunnerAPIWrapper.web_api_host_info[1])
+
+def shutdown_app():
+    func = request.environ.get('werkzeug.server.shutdown')
+    if func is None:
+        raise RuntimeError('Not running with the Werkzeug Server')
+    func()

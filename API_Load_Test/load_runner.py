@@ -1,11 +1,20 @@
 import datetime
+import json
 import os
+import time
+
 import psutil
 import shlex
 import subprocess as sp
 import logging
 import math
-from api_exceptions import LoadRunnerFailedClose
+
+import requests
+from requests.exceptions import ConnectionError
+import backoff
+
+from API_Load_Test.exceptions import LoadRunnerFailedClose, LocustUIUnaccessible, SlaveInitilizationException, \
+    AttemptAccessUIWhenNoWeb, FailedToStartLocustUI
 
 from API_Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
 logging.basicConfig(level=logging.DEBUG,
@@ -38,6 +47,10 @@ class LoadRunner:
     stat_interval = 2
     per_process_used_cpu_running_threshold = 5 #TODO Find actual threshold
     process_age_limit = 2 #TODO Find process age limit
+
+
+    Succesful_Test_Start = {"message": "Swarming started", "success": True}
+    Max_Connection_Time = 3
 #TODO: make a method to ensure the class is not running any proccesses from last run
 
 
@@ -52,21 +65,72 @@ class LoadRunner:
         self.master_host_info = master_host_info
         self.web_ui_host_info = web_ui_info
         self.config = config
-        self.no_web = False
+        self.no_web = None
         self.expected_slaves = 0
         self.__set_virtual_env()
 
+
+
+    @property
+    def master(self):
+        return self._master
+
+
+    @master.setter
+    def master(self, value):
+        if not self.children:
+            raise LoadRunnerFailedClose("Overrding Master child process prior to closing it, this will result in zombie processes")
+        if not isinstance(value, sp.Popen) and value is not None:
+            raise ValueError("You cannot assign the master process a value that is not a subprocess or None")
+        self._master = value
+
+
+    @property
+    def slaves(self):
+        return self._slaves
+
+
+    @slaves.setter
+    def slaves(self, value):
+        if not self.children:
+            raise LoadRunnerFailedClose("Overriding Slave child processes prior to closing it, this will result in zombie processes")
+        if not isinstance(value, list):
+            raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
+        for process in value:
+            if not isinstance(process, sp.Popen):
+                raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
+        self._slaves = value
+
+    @property
+    def no_web(self):
+        return self._no_web
+
+    @no_web.setter
+    def no_web(self, value):
+        if self._no_web is None:
+            self._no_web = value
+        else:
+            if not self.master or not self.slaves:
+                raise LoadRunnerFailedClose("You can not change the web status of a test without closing the previous test")
+
+    @property
+    def children(self):
+        return self._child_processes()
+
+    @property
+    def cores(self):
+        return self._avaliable_cpu_count()
 
 
 
     def run_multi_core(self, api_call_weight, env, node, version, min, max,
                        stats_file_name=None, log_level=None, log_file_name=None, no_web=False,
                        reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
-                       stats_folder=None, log_folder=None):
-
-
+                       stats_folder=None, log_folder=None, default_2_core=False):
         self.no_web = no_web
         available_cores = self._avaliable_cpu_count()
+        if default_2_core:
+            available_cores = 2
         assert available_cores > 1  # TO RUN MULTICORE WE NEED MORE THAN ONE CORE
 
         self.expected_slaves = available_cores - 1
@@ -103,15 +167,45 @@ class LoadRunner:
 
 
 
+    def run_from_ui(self, locust_count, hatch_rate):
+        json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
+        try:
+            response = self.__request_ui("post", extension="/swarm", data=json_params)
+        except ConnectionError as e:
+            raise FailedToStartLocustUI("The /swarm locust URL could not be accessed")
+        else:
+            if response.status_code is not 200:
+                raise FailedToStartLocustUI("The /swarm locust URL could not be accessed")
+            elif json.loads(response.content) != LoadRunner.Succesful_Test_Start:
+                raise FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
+
+
+
+    def check_ui_slave_count(self):
+        response = self.__request_ui("get", extension="/stats/requests")
+        if response.status_code is not 200:
+            raise LocustUIUnaccessible("The web UI could not be accessed")
+        site_data = json.loads(response.content)
+        try:
+            slaves_count = len(site_data["slaves"])
+        except KeyError as e:
+            slaves_count = 0
+        if self.expected_slaves is not slaves_count:
+            raise SlaveInitilizationException("All of the slaves where not loaded correctly")
+
+
+
+
     def test_currently_running(self):
         children = self.children
+        if not children:
+            return False
         if self.no_web is True and children:
             return True
         usage = 0
         for child in children:
-            usage += child.cpu_percent(5)
+            usage += child.cpu_percent(2)
         if usage/len(children) <= LoadRunner.per_process_used_cpu_running_threshold:
-            self.stop_test()
             return False
         else:
             return True
@@ -157,6 +251,7 @@ class LoadRunner:
            self._safe_kill(slave)
         self.master = None
         self.slaves = []
+        self.expected_slaves = 0
         if self.children:
             raise LoadRunnerFailedClose("unsuccesfully closed all child proccesses")
 
@@ -173,13 +268,6 @@ class LoadRunner:
                 pass
             else:
                 raise e
-
-
-
-
-
-
-
 
 
     def _avaliable_cpu_count(self):
@@ -344,51 +432,28 @@ class LoadRunner:
             raise Exception("Could not find virutal env")
 
 
-    @property
-    def master(self):
-        return self._master
 
 
-    @master.setter
-    def master(self, value):
-        if not self.children:
-            raise LoadRunnerFailedClose("Overrding Master child process prior to closing it, this will result in zombie processes")
-        if not isinstance(value, sp.Popen) and value is not None:
-            raise ValueError("You cannot assign the master process a value that is not a subprocess or None")
-        self._master = value
 
-
-    @property
-    def slaves(self):
-        return self._slaves
-
-
-    @slaves.setter
-    def slaves(self, value):
-        if not self.children:
-            raise LoadRunnerFailedClose("Overriding Slave child processes prior to closing it, this will result in zombie processes")
-        if not isinstance(value, list):
-            raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
-        for process in value:
-            if not isinstance(process, sp.Popen):
-                raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
-        self._slaves = value
-
-    @property
-    def no_web(self):
-        return self._no_web
-
-    @no_web.setter
-    def no_web(self, value):
-        if self._no_web is None:
-            self._no_web = value
+    @backoff.on_exception(backoff.expo,
+                          ConnectionError,
+                          max_time=Max_Connection_Time)
+    def __request_ui(self, request, extension=None, **kwargs):
+        if self.no_web:
+            raise AttemptAccessUIWhenNoWeb("Locust is running in no web mode, you can't access the web UI")
+        web_ui_host = self.web_ui_host_info[0]
+        web_ui_port = self.web_ui_host_info[1]
+        if web_ui_host == "localhost":
+            os.environ['no_proxy'] = '127.0.0.1,localhost'
+            host = "http://{web_ui_host}:{web_ui_port}".format(web_ui_host=web_ui_host, web_ui_port=web_ui_port)
+            host = host + extension if extension is not None else host
         else:
-            if not self.master or not self.slaves:
-                raise LoadRunnerFailedClose("You can not change the web status of a test without closing the previous test")
+            host = "https://{web_ui_host}".format(web_ui_host=web_ui_host)
+            host = host + extension if extension is not None else host
+        response = requests.request(request, host, **kwargs)
+        return response
 
-    @property
-    def children(self):
-        return self._child_processes()
+
 
 
 

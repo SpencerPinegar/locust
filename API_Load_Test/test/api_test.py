@@ -8,7 +8,7 @@ from API_Load_Test.load_runner import LoadRunner
 import json
 import time
 from requests.exceptions import ConnectionError
-
+from API_Load_Test.exceptions import AttemptAccessUIWhenNoWeb, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
 
 class APITest(TestCase):
 
@@ -78,13 +78,7 @@ class APITest(TestCase):
             self.load_runner.run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
                                              stats_file_name="test", stats_folder=APITest.test_stats_folder,
                                              )
-            time.sleep(1)
-            try:
-                self.__run_from_ui()
-            except ConnectionError as e:
-                time.sleep(3)
-                self.__run_from_ui()
-
+            self.load_runner.run_from_ui(self.n_clients, self.hatch_rate)
             time.sleep(15)
         else:
             self.load_runner.run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
@@ -100,25 +94,35 @@ class APITest(TestCase):
 
 
     def _test_multi_core(self, route, version, web, assert_results=True):
+        if self._is_multi_core_capable():
+            default_2_core=False
+        else:
+            default_2_core=True
         self.__empty_test_stats_folder()
         self.assertEqual(os.listdir(APITest.test_stats_folder), [], "The test_stats folder did not start empty")
         api_call_weight = {route: 1}
         if web:
             self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
-                                            stats_file_name="test", stats_folder=APITest.test_stats_folder)
-            time.sleep(3)
-            self.__check_ui_slave_count()
-            self.__run_from_ui()
+                                            stats_file_name="test", stats_folder=APITest.test_stats_folder, default_2_core=default_2_core)
+            self.load_runner.check_ui_slave_count()
+            self.load_runner.run_from_ui(self.n_clients, self.hatch_rate)
             time.sleep(15)
         else:
             self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
                                             stats_file_name="test", stats_folder=APITest.test_stats_folder,
                                             no_web=True, reset_stats=True, num_clients=self.n_clients,
-                                            hatch_rate=self.hatch_rate, run_time=self.time)
+                                            hatch_rate=self.hatch_rate, run_time=self.time, default_2_core=default_2_core)
             info_list, return_code_list = self.load_runner.stop_test()
             for index in range(len(info_list)):
                 self.assertEqual(return_code_list[index], 0, str(info_list[index]))
         self.__check_test_stats_folder(assert_results)
+
+
+    def _is_multi_core_capable(self):
+        return self.load_runner.cores > 1
+
+
+
 
 
     def __check_test_stats_folder(self, assert_results):
@@ -144,33 +148,5 @@ class APITest(TestCase):
         self.assertEqual(len(os.listdir(APITest.test_stats_folder)), 0, "The test stats folder was not properly emptied")
 
 
-    def __run_from_ui(self):
-        json_params = {"locust_count": self.n_clients, "hatch_rate": self.hatch_rate}
-        response = self.__request_ui("post", extension="/swarm", data=json_params)
-        self.assertEqual(200, response.status_code, "The web UI could not be accessed to start properly")
-        self.assertDictEqual(json.loads(response.content), {"message": "Swarming started", "success": True},
-                             "The web UI was properly accessed, but is not working properly")
 
 
-    def __check_ui_slave_count(self):
-        response = self.__request_ui("get", extension="/stats/requests")
-        self.assertEqual(200, response.status_code, "The web UI info could not be accessed")
-        site_data = json.loads(response.content)
-        slaves_count = len(site_data["slaves"])
-        self.assertEqual(self.load_runner.expected_slaves, slaves_count)
-
-
-
-    def __request_ui(self, request, extension=None, **kwargs):
-        web_ui_host = self.web_ui_host_info[0]
-        web_ui_port = self.web_ui_host_info[1]
-        if web_ui_host == "localhost":
-            os.environ['no_proxy'] = '127.0.0.1,localhost'
-            host = "http://{web_ui_host}:{web_ui_port}".format(web_ui_host=web_ui_host, web_ui_port=web_ui_port)
-            host = host + extension if extension is not None else host
-            response = requests.request(request, host, **kwargs)
-        else:
-            host = "https://{web_ui_host}".format(web_ui_host=web_ui_host)
-            host = host + extension if extension is not None else host
-            response = requests.request(request, host, **kwargs)
-        return response

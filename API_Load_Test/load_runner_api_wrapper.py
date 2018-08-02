@@ -1,7 +1,8 @@
 from API_Load_Test.load_runner import LoadRunner
 from API_Load_Test.Config.config import Config
-from API_Load_Test.api_exceptions import TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode, \
-    InvalidAPIVersion, UnaccessibleLocustUI, SlaveInitilizationException
+from requests.exceptions import ConnectionError
+from API_Load_Test.exceptions import TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode, \
+    InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
 
 import os
 import requests
@@ -9,7 +10,7 @@ import json
 import time
 
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
-class TestAPIWrapper:
+class LoadRunnerAPIWrapper:
     # TODO make come from config
 
     Stats_Folder = os.path.join(API_Load_Test_Dir, "Stats")
@@ -18,16 +19,19 @@ class TestAPIWrapper:
     Slave_Locust_File = os.path.join(API_Load_Test_Dir, "api_locust.py")
     master_host_info = ("127.0.0.1", 5557)
     web_ui_host_info = ("localhost", 8089)
-    web_api_host_info = ("0.0.0.0", 5000)
+    web_api_host_info = ("localhost", 5000)
     test_runner_communication_info = ("127.0.0.1", 8000)
 
     Current_Benchmark_Test_Msg = u"A benchmark test is currently running on this server - It will not be available through the UI"
     Current_Manuel_Test_Msg = u"A manuel test is currently running on this server - view it through the UI"
+    Setup_Benchmark_Test_Msg = u"A benchmark test is setup on this server - It will run and not be available through the UI"
+    Setup_Manuel_Test_Msg = u"A manuel test is setup on this server - view/run it through the UI"
 
-    def __init__(self):
-        self.config = Config()
-        self._test_runner = LoadRunner(TestAPIWrapper.master_host_info, TestAPIWrapper.web_ui_host_info,
-                                       TestAPIWrapper.Slave_Locust_File, TestAPIWrapper.Master_Locust_File, self.config)
+
+
+    def __init__(self, config, loadrunner):
+        self.config = config
+        self._test_runner = loadrunner
 
     @property
     def test_runner(self):
@@ -37,7 +41,7 @@ class TestAPIWrapper:
     def no_web(self):
         return self.test_runner.no_web
 
-    def is_test_running(self):
+    def is_running(self):
         is_running = False
         test_type = None
         if self.test_runner.test_currently_running():
@@ -49,46 +53,72 @@ class TestAPIWrapper:
 
         return (is_running, test_type)
 
+
+    def is_setup(self):
+        is_setup = True
+        test_type = None
+        try:
+            if self.no_web:
+
+                if len(self.test_runner.children) is not self.test_runner.expected_slaves + 1:
+                    raise SlaveInitilizationException("All of the slaves where not loaded correctly")
+                test_type = self.Setup_Benchmark_Test_Msg
+            else:
+                self.test_runner.check_ui_slave_count()
+                test_type = self.Setup_Manuel_Test_Msg
+        except (SlaveInitilizationException, LocustUIUnaccessible, ConnectionError) as e:
+            is_setup = False
+            test_type = str(e)
+        finally:
+            return (is_setup, test_type)
+
+
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
         # TODO find a way to distribute segemented test data when running
         pass
 
-    def start_manuel_test(self, api_call_weight, env, node, version, min, max):
-        test_running, msg = self.is_test_running()
+    def start_manuel_test(self, api_call_weight, env, node, version, min, max, default_2_cores=False):
+        test_running, msg = self.is_running()
         if test_running:
             raise TestAlreadyRunning(msg)
         else:
-            self.test_runner.stop_test()
+            self.stop_tests()
             self._verify_params(api_call_weight, env, version, node)
             file_prefix = "Manuel"
             self.test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
-                                            stats_file_name=file_prefix, stats_folder=TestAPIWrapper.Stats_Folder,
-                                            log_file_name=file_prefix, log_folder=TestAPIWrapper.Logs_Folder,
-                                            log_level="ERROR")
+                                            stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                                            log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
+                                            log_level="ERROR", default_2_core=default_2_cores)
 
     def start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate, run_time,
-                             reset_stats):
-        test_running, msg = self.is_test_running()
+                             reset_stats, default_2_cores=False):
+        test_running, msg = self.is_running()
         if test_running:
             raise TestAlreadyRunning(msg)
         else:
-            self.test_runner.stop_test()
+            self.stop_tests()
             self._verify_params(api_call_weight, env, version, node)
             file_prefix = "Benchmark"
             self.test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
-                                            stats_file_name=file_prefix, stats_folder=TestAPIWrapper.Stats_Folder,
-                                            log_file_name=file_prefix, log_folder=TestAPIWrapper.Logs_Folder,
+                                            stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                                            log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
                                             log_level="ERROR",
                                             no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
-                                            run_time=run_time, reset_stats=reset_stats)
+                                            run_time=run_time, reset_stats=reset_stats, default_2_core=default_2_cores)
 
-    def verify_started(self):
-        if self.no_web:
-            if len(self.test_runner.children) is not self.test_runner.expected_slaves + 1:
-                raise SlaveInitilizationException("All of the slaves where not loaded correctly")
-        else:
-            self.__check_ui_slave_count()
-        return u"started"
+
+
+    def run_from_ui(self, locust_count, hatch_rate):
+        self.test_runner.run_from_ui(locust_count, hatch_rate)
+
+
+
+    def stop_tests(self):
+        self.test_runner.stop_test()
+
+
+
+
 
     def _verify_params(self, api_call_weight, env, version, node):
         self.__verify_api_routes(api_call_weight)
@@ -120,35 +150,3 @@ class TestAPIWrapper:
                     version=version, route=route_name
                 ))
 
-    def __check_ui_slave_count(self, retries=2):
-        tries = 0
-        while True:
-            try:
-                response = self.__request_ui("get", extension="/stats/requests")
-                if response.status_code is not 200:
-                    raise UnaccessibleLocustUI("The web UI could not be accessed")
-                site_data = json.loads(response.content)
-                slaves_count = len(site_data["slaves"])
-                if self.test_runner.expected_slaves is not slaves_count:
-                    raise SlaveInitilizationException("All of the slaves where not loaded correctly")
-            except UnaccessibleLocustUI or SlaveInitilizationException as e:
-                tries += 1
-                if tries >= retries:
-                    raise e
-                time.sleep(1)
-            else:
-                return
-
-    def __request_ui(self, request, extension=None, **kwargs):
-        web_ui_host = self.web_ui_host_info[0]
-        web_ui_port = self.web_ui_host_info[1]
-        if web_ui_host == "localhost":
-            os.environ['no_proxy'] = '127.0.0.1,localhost'
-            host = "http://{web_ui_host}:{web_ui_port}".format(web_ui_host=web_ui_host, web_ui_port=web_ui_port)
-            host = host + extension if extension is not None else host
-            response = requests.request(request, host, **kwargs)
-        else:
-            host = "https://{web_ui_host}".format(web_ui_host=web_ui_host)
-            host = host + extension if extension is not None else host
-            response = requests.request(request, host, **kwargs)
-        return response

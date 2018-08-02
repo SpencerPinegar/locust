@@ -50,7 +50,7 @@ class InvalidAPIVersion(Exception):
     """
     pass
 
-class UnaccessibleLocustUI(Exception):
+class LocustUIUnaccessible(Exception):
     """
     This Exception is raised when the server can't access the Locust website when it is running a Load Test
     """
@@ -59,4 +59,16 @@ class UnaccessibleLocustUI(Exception):
 class SlaveInitilizationException(Exception):
     """
     This Exception is raised when the an incorrect number of slave locusts are created
+    """
+    pass
+
+class FailedToStartLocustUI(Exception):
+    """
+    This Exception is raised when the Locust UI can not be accessed
+    """
+    pass
+
+class AttemptAccessUIWhenNoWeb(Exception):
+    """
+    This Exception is raised when someone attempts to access the Locust UI while no web is on
     """
