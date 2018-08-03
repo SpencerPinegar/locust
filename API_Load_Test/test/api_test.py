@@ -95,15 +95,15 @@ class APITest(TestCase):
 
     def _test_multi_core(self, route, version, web, assert_results=True):
         if self._is_multi_core_capable():
-            default_2_core=False
+            self.load_runner.default_2_cores = False
         else:
-            default_2_core=True
+            self.load_runner.default_2_cores = True
         self.__empty_test_stats_folder()
         self.assertEqual(os.listdir(APITest.test_stats_folder), [], "The test_stats folder did not start empty")
         api_call_weight = {route: 1}
         if web:
             self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
-                                            stats_file_name="test", stats_folder=APITest.test_stats_folder, default_2_core=default_2_core)
+                                            stats_file_name="test", stats_folder=APITest.test_stats_folder)
             self.load_runner.check_ui_slave_count()
             self.load_runner.run_from_ui(self.n_clients, self.hatch_rate)
             time.sleep(15)
@@ -111,7 +111,7 @@ class APITest(TestCase):
             self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
                                             stats_file_name="test", stats_folder=APITest.test_stats_folder,
                                             no_web=True, reset_stats=True, num_clients=self.n_clients,
-                                            hatch_rate=self.hatch_rate, run_time=self.time, default_2_core=default_2_core)
+                                            hatch_rate=self.hatch_rate, run_time=self.time)
             info_list, return_code_list = self.load_runner.stop_test()
             for index in range(len(info_list)):
                 self.assertEqual(return_code_list[index], 0, str(info_list[index]))
@@ -120,7 +120,6 @@ class APITest(TestCase):
 
     def _is_multi_core_capable(self):
         return self.load_runner.cores > 1
-
 
 
 

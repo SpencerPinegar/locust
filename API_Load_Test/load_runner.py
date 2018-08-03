@@ -1,13 +1,15 @@
 import datetime
 import json
 import os
-import time
+from API_Load_Test.exceptions import NotEnoughAvailableCores
 
 import psutil
 import shlex
 import subprocess as sp
 import logging
 import math
+import datetime
+import time
 
 import requests
 from requests.exceptions import ConnectionError
@@ -43,14 +45,15 @@ MASTER_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "master_locust.py")
 class LoadRunner:
     assumed_load_average_added = 1
     assumed_cpu_used = 7
-    cpu_samples = 5
     stat_interval = 2
-    per_process_used_cpu_running_threshold = 5 #TODO Find actual threshold
+    per_process_used_cpu_running_threshold = 4 #TODO Find actual threshold
     process_age_limit = 2 #TODO Find process age limit
 
 
     Succesful_Test_Start = {"message": "Swarming started", "success": True}
     Max_Connection_Time = 3
+    CPU_Measure_Interval = .2
+    Locust_Boot_Time = 2.5 #TODO Find actual timing
 #TODO: make a method to ensure the class is not running any proccesses from last run
 
 
@@ -68,6 +71,7 @@ class LoadRunner:
         self.no_web = None
         self.expected_slaves = 0
         self.__set_virtual_env()
+        self._default_2_cores = False
 
 
 
@@ -122,19 +126,31 @@ class LoadRunner:
         return self._avaliable_cpu_count()
 
 
+    @property
+    def default_2_cores(self):
+        return self._default_2_cores
 
-    def run_multi_core(self, api_call_weight, env, node, version, min, max,
+    @default_2_cores.setter
+    def default_2_cores(self, value):
+        if not isinstance(value, bool):
+            return
+        else:
+            self._default_2_cores = value
+
+
+    def run_multi_core(self, api_call_weight, env, node, version, n_min, n_max,
                        stats_file_name=None, log_level=None, log_file_name=None, no_web=False,
                        reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
-                       stats_folder=None, log_folder=None, default_2_core=False):
+                       stats_folder=None, log_folder=None):
         self.no_web = no_web
         available_cores = self._avaliable_cpu_count()
-        if default_2_core:
+        if self.default_2_cores:
             available_cores = 2
-        assert available_cores > 1  # TO RUN MULTICORE WE NEED MORE THAN ONE CORE
+        if available_cores <= 1:
+            raise NotEnoughAvailableCores("There where only {cores} cores available for load test on this machine".format(cores=available_cores))# TO RUN MULTICORE WE NEED MORE THAN ONE CORE
 
         self.expected_slaves = available_cores - 1
-        os_env = self._get_configured_env(api_call_weight, env, version, node, min, max)
+        os_env = self._get_configured_env(api_call_weight, env, version, node, n_min, n_max)
         stats_file_name, log_file_name = self._get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
 
         master_options = self._create_master_options(env, node, stats_file_name, log_level, log_file_name, no_web, reset_stats,
@@ -148,22 +164,22 @@ class LoadRunner:
             slave = self._create_process(os_env.get_env(), slave_options)
             to_be_slaves.append(slave)
         self.slaves = to_be_slaves
+        self._wait_for_locust_process_upboot()
 
 
 
 
-    def run_single_core(self, api_call_weight, env, node, version, min, max, stats_file_name=None, log_level=None, log_file_name=None,
+    def run_single_core(self, api_call_weight, env, node, version, n_min, n_max, stats_file_name=None, log_level=None, log_file_name=None,
                         no_web=False, reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
                         stats_folder=None, log_folder=None):
-
         self.no_web = no_web
         stats_file_name, log_file_name = self._get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
-        os_env = self._get_configured_env(api_call_weight, env, version, node, min, max)
+        os_env = self._get_configured_env(api_call_weight, env, version, node, n_min, n_max)
 
         undis_options = self._create_undistributed_options(env, node, stats_file_name, log_level, log_file_name, no_web, reset_stats,
                                                            num_clients, hatch_rate, run_time)
         self.master = self._create_process(os_env.get_env(), undis_options)
-
+        self._wait_for_locust_process_upboot()
 
 
 
@@ -197,14 +213,17 @@ class LoadRunner:
 
 
     def test_currently_running(self):
+
         children = self.children
         if not children:
             return False
         if self.no_web is True and children:
             return True
-        usage = 0
-        for child in children:
-            usage += child.cpu_percent(2)
+        #open_files = sum([len(child.open_files()) for child in children])
+        #open_fd = sum([child.num_fds() for chlid in children])
+        #
+        usage = sum([child.cpu_percent(LoadRunner.CPU_Measure_Interval) for child in children])
+
         if usage/len(children) <= LoadRunner.per_process_used_cpu_running_threshold:
             return False
         else:
@@ -228,6 +247,7 @@ class LoadRunner:
 
 
     def _wait_till_done(self):
+        #TODO: MAKE THIS KILL
         if self.master is None:
             self.__fresh_state()
             return [], []
@@ -279,7 +299,7 @@ class LoadRunner:
         physical_cores = psutil.cpu_count(
             logical=False)  # Get the # of hardware cores -- HyperThreading wont make a difference
         percentage_per_cpu = 100/physical_cores
-        idle_time_percentage = psutil.cpu_times_percent(LoadRunner.cpu_samples).idle - LoadRunner.assumed_cpu_used
+        idle_time_percentage = psutil.cpu_times_percent(LoadRunner.CPU_Measure_Interval).idle - LoadRunner.assumed_cpu_used
         available_cores_cpu = 0
         while idle_time_percentage >= percentage_per_cpu:
             idle_time_percentage -= percentage_per_cpu
@@ -418,6 +438,10 @@ class LoadRunner:
 
 
 
+    def _wait_for_locust_process_upboot(self):
+        while time.time() - min([child.create_time() for child in self.children]) < LoadRunner.Locust_Boot_Time:
+            time.sleep(.1)
+
 
     def __set_virtual_env(self):
         activate_virtual_env_path = "bin/activate_this.py"
@@ -452,6 +476,7 @@ class LoadRunner:
             host = host + extension if extension is not None else host
         response = requests.request(request, host, **kwargs)
         return response
+
 
 
 

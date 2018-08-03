@@ -1,13 +1,8 @@
-from API_Load_Test.load_runner import LoadRunner
-from API_Load_Test.Config.config import Config
 from requests.exceptions import ConnectionError
 from API_Load_Test.exceptions import TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode, \
     InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
 
 import os
-import requests
-import json
-import time
 
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
 class LoadRunnerAPIWrapper:
@@ -28,10 +23,20 @@ class LoadRunnerAPIWrapper:
     Setup_Manuel_Test_Msg = u"A manuel test is setup on this server - view/run it through the UI"
 
 
-
     def __init__(self, config, loadrunner):
         self.config = config
         self._test_runner = loadrunner
+
+
+    @property
+    def default_2_cores(self):
+        return self._test_runner.default_2_cores
+
+    @default_2_cores.setter
+    def default_2_cores(self, value):
+        self._test_runner.default_2_cores = value
+
+
 
     @property
     def test_runner(self):
@@ -39,12 +44,12 @@ class LoadRunnerAPIWrapper:
 
     @property
     def no_web(self):
-        return self.test_runner.no_web
+        return self._test_runner.no_web
 
     def is_running(self):
         is_running = False
         test_type = None
-        if self.test_runner.test_currently_running():
+        if self._test_runner.test_currently_running():
             is_running = True
             if self.no_web:
                 test_type = self.Current_Benchmark_Test_Msg
@@ -57,64 +62,63 @@ class LoadRunnerAPIWrapper:
     def is_setup(self):
         is_setup = True
         test_type = None
+        is_running, running_test_type = self.is_running()
+        if is_running:
+            return False, running_test_type
         try:
             if self.no_web:
-
-                if len(self.test_runner.children) is not self.test_runner.expected_slaves + 1:
+                if len(self._test_runner.children) is not self._test_runner.expected_slaves + 1:
                     raise SlaveInitilizationException("All of the slaves where not loaded correctly")
                 test_type = self.Setup_Benchmark_Test_Msg
             else:
-                self.test_runner.check_ui_slave_count()
+                self._test_runner.check_ui_slave_count()
                 test_type = self.Setup_Manuel_Test_Msg
         except (SlaveInitilizationException, LocustUIUnaccessible, ConnectionError) as e:
             is_setup = False
-            test_type = str(e)
+            test_type = None
         finally:
-            return (is_setup, test_type)
+            return is_setup, test_type
 
 
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
         # TODO find a way to distribute segemented test data when running
         pass
 
-    def start_manuel_test(self, api_call_weight, env, node, version, min, max, default_2_cores=False):
-        test_running, msg = self.is_running()
-        if test_running:
-            raise TestAlreadyRunning(msg)
-        else:
-            self.stop_tests()
-            self._verify_params(api_call_weight, env, version, node)
-            file_prefix = "Manuel"
-            self.test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
+    def setup_manuel_test(self, api_call_weight, env, node, version, min, max):
+        self.__raise_if_running()
+        self.stop_tests()
+        self._verify_params(api_call_weight, env, version, node)
+        file_prefix = "Manuel"
+        self._test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
                                             stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
                                             log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                            log_level="ERROR", default_2_core=default_2_cores)
+                                            log_level="ERROR")
 
-    def start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate, run_time,
-                             reset_stats, default_2_cores=False):
-        test_running, msg = self.is_running()
-        if test_running:
-            raise TestAlreadyRunning(msg)
-        else:
-            self.stop_tests()
-            self._verify_params(api_call_weight, env, version, node)
-            file_prefix = "Benchmark"
-            self.test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
+    def setup_and_start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate, run_time,
+                                       reset_stats):
+        self.__raise_if_running()
+        self.stop_tests()
+        self._verify_params(api_call_weight, env, version, node)
+        file_prefix = "Benchmark"
+        self._test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
                                             stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
                                             log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
                                             log_level="ERROR",
                                             no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
-                                            run_time=run_time, reset_stats=reset_stats, default_2_core=default_2_cores)
+                                            run_time=run_time, reset_stats=reset_stats)
 
 
 
-    def run_from_ui(self, locust_count, hatch_rate):
-        self.test_runner.run_from_ui(locust_count, hatch_rate)
+    def start_manuel_from_ui(self, locust_count, hatch_rate):
+        self.__raise_if_running()
+        self._test_runner.run_from_ui(locust_count, hatch_rate)
+
+
 
 
 
     def stop_tests(self):
-        self.test_runner.stop_test()
+        self._test_runner.stop_test()
 
 
 
@@ -150,3 +154,8 @@ class LoadRunnerAPIWrapper:
                     version=version, route=route_name
                 ))
 
+
+    def __raise_if_running(self):
+        test_running, msg = self.is_running()
+        if test_running:
+            raise TestAlreadyRunning(msg)

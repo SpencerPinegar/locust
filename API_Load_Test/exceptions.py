@@ -72,3 +72,10 @@ class AttemptAccessUIWhenNoWeb(Exception):
     """
     This Exception is raised when someone attempts to access the Locust UI while no web is on
     """
+    pass
+
+class NotEnoughAvailableCores(Exception):
+    """
+    This Exception is raised when someone attempts to run multi-core locust on a machine without enough available cores
+    """
+    pass
