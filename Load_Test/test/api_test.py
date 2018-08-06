@@ -1,14 +1,14 @@
 from unittest import TestCase
-from API_Load_Test.Config.config import Config
-from API_Load_Test.request_pool import RequestPoolFactory
+from Load_Test.Config.config import Config
+from Load_Test.request_pool import RequestPoolFactory
 import os
 import pandas
 import requests
-from API_Load_Test.load_runner import LoadRunner
+from Load_Test.load_runner import LoadRunner
 import json
 import time
 from requests.exceptions import ConnectionError
-from API_Load_Test.exceptions import AttemptAccessUIWhenNoWeb, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
+from Load_Test.exceptions import AttemptAccessUIWhenNoWeb, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
 
 class APITest(TestCase):
 

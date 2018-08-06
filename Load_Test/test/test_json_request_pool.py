@@ -1,10 +1,11 @@
 from unittest import TestCase
-from API_Load_Test.Config.config import Config
-from API_Load_Test.request_pool import _ReadOnlyRequestPool, RequestPoolFactory
-from API_Load_Test.test.api_test import APITest
+from Load_Test.Config.config import Config
+from Load_Test.request_pool import _ReadOnlyRequestPool, RequestPoolFactory
+from Load_Test.test.api_test import APITest
+import hashlib
 import json
 import requests
-from API_Load_Test.Config.sql_route_statements import TEST_SQL_STATEMENTS
+from Load_Test.Config.sql_route_statements import TEST_SQL_STATEMENTS
 
 config = Config()
 
@@ -366,6 +367,17 @@ class TestInverseStateRequestPool(APITest):
 
 
 
+class TestMiscFunctions(APITest):
+
+    def test_get_redundant_ts_segment_url(self):
+        route_name, version = ("Redundant Ts Segment", None)
+        redudntant_ts_segments = self.PoolFactory.get_redundant_ts_segment_urls("DEV2", 30)
+        for ts_url, content_hash in redudntant_ts_segments.iteritems():
+            ts_resp = requests.get(ts_url)
+            self.assertEqual(200, ts_resp.status_code, "Could not access ts segment {ts}".format(ts=ts_url))
+            ts_content = ts_resp.content
+            ts_content_hash = hash(ts_content)
+            self.assertEqual(content_hash, ts_content_hash, "Incorrect content for ts segment {ts}".format(ts=ts_url))
 
 
 

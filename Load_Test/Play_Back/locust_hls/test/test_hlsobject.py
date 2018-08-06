@@ -1,6 +1,6 @@
 import unittest
 
-import API_Load_Test.locust_hls.hlsobject as hlsobject
+import Load_Test.locust_hls.hlsobject as hlsobject
 
 class TddMasterPlaylistLive(unittest.TestCase):
 

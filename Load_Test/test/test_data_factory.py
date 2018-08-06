@@ -1,6 +1,6 @@
 from unittest import TestCase
-from API_Load_Test.Config.config import Config
-from API_Load_Test.data_factory import DataFactory
+from Load_Test.Config.config import Config
+from Load_Test.data_factory import DataFactory
 
 class TestDataFactory(TestCase):
 

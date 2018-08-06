@@ -1,6 +1,6 @@
 import unittest
 
-import API_Load_Test.locust_hls.cast as cast
+import Load_Test.locust_hls.cast as cast
 
 class TddSplitting(unittest.TestCase):
     def test_simple_split(self):

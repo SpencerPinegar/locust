@@ -1,8 +1,9 @@
 import logging
 import random
 import sys
-
+import json
 import requests
+import hashlib
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -109,11 +110,60 @@ class RequestPoolFactory:
         return pool, route
 
 
-    def get_redundant_ts_segment_urls(self):
-        #Find resource
-        #Grab 4 of lowest level ts segments
-        #put them in a list
-        pass
+    def get_redundant_ts_segment_urls(self, env, size, **kwargs):
+        route_name = "Redundant Ts Segment"
+        conn = self._get_connection(env)
+        querry = self.config.get_function_querry(route_name)
+        try:
+            with conn.cursor() as cur:
+                cur.execute(querry)
+                data = cur.fetchall()
+                self.max_pool_size = len(data)
+
+        except Exception as e:
+            logger.exception(e)
+            sys.exit(1)
+        else:
+            logger.info("Got QVT")
+            qvt_host = data[0][0]
+            qvt_response = requests.get(qvt_host)
+            if qvt_response.status_code != 200:
+                logger.error("Could not reach QVT Resource {qvt}".format(qvt=qvt_host))
+            qvt_json = json.loads(qvt_response.content)
+            m3u8_host = qvt_json[u"playback_info"][u"m3u8_url_template"]
+            m3u8_host = m3u8_host.replace("$encryption_type$", "internal")
+            m3u8_resposne = requests.get(m3u8_host)
+            if m3u8_resposne.status_code != 200:
+                logger.error("Could not reach M3U8 Resource {M3U8}".format(M3U8=m3u8_host))
+            m3u8_manifest = m3u8_resposne.content
+            for line in m3u8_manifest.splitlines():
+                if line.startswith("#"):
+                    continue
+                else:
+                    stream = line
+                    break
+
+            stream_host = m3u8_host.replace("internal_master.m3u8", stream)
+            stream_response = requests.get(stream_host)
+            if stream_response.status_code != 200:
+                logger.error("Could not reach Stream Resource {stream}".format(stream=stream_host))
+            stream_content = stream_response.content
+            return_streams = {}
+            for line in stream_content.splitlines():
+                if line.startswith("#"):
+                    continue
+                elif line.endswith(".ts"):
+                    ts_host = m3u8_host.replace("internal_master.m3u8", line)
+                    ts_response = requests.get(ts_host)
+                    if ts_response.status_code != 200:
+                        logger.error("Could not reach Ts Segement {ts}".format(ts=ts_host))
+                    else:
+                        ts_content = ts_response.content
+                        ts_hash = hash(ts_content) #What we use to evaluate content
+                        return_streams.setdefault(ts_host, ts_hash)
+                        if len(return_streams) is size:
+                            return return_streams
+            logger.error("Could Not find enough ts Segments")
 
     # TODO: Create Functions To get Create/Delete Request Pools
 
@@ -156,6 +206,9 @@ class RequestPoolFactory:
         req_fields = version["Required Fields"]
         opt_fields = version["Optional Fields"]
         return sql_route, req_fields, opt_fields, min_norm, max_norm, is_list
+
+
+
 
     def close(self):
         for value in self.env_db_connections.values():

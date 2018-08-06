@@ -1,5 +1,5 @@
 from unittest import TestCase
-from API_Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
+from Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
 import os
 
 

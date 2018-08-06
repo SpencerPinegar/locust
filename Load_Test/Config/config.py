@@ -6,7 +6,7 @@ import logging
 import os
 import yaml #PYYAML
 import psycopg2 #psycopg2
-from API_Load_Test.Config.sql_route_statements import SQL_ROUTES_STATEMENTS
+from Load_Test.Config.sql_route_statements import SQL_ROUTES_STATEMENTS
 
 HERE = os.path.abspath(__file__)
 DIR_PATH = os.path.dirname(HERE)
@@ -50,7 +50,8 @@ class Config(object):
 
 
 
-
+    def get_function_querry(self, function_route):
+        return SQL_ROUTES_STATEMENTS[function_route]
 
 
     def get_api_routes(self, route_name):

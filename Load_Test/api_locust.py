@@ -6,10 +6,10 @@ from locust import HttpLocust, TaskSet
 import locust.stats
 from requests.exceptions import RequestException
 
-from API_Load_Test.Config.config import Config
-from API_Load_Test.environment_wrapper import EnvironmentWrapper
-from API_Load_Test.request_pool import RequestPoolFactory
-
+from Load_Test.Config.config import Config
+from Load_Test.environment_wrapper import EnvironmentWrapper
+from Load_Test.request_pool import RequestPoolFactory
+import random
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -84,10 +84,11 @@ class APITasks(TaskSet):
         locust.client.post(APITasks.lr_url, json=json_data)
 
 
-    def _redundant_ts_segment(self):
+    def _redundant_ts_segment(locust):
+        ts_url, ts_content_hash = random.choice(APITasks.ts_segment_urls)
+        APITasks._get_and_validate_ts_segment(locust, ts_url, ts_content_hash)
         #Get ts url from the APITasks setup
         #Have the locust requests to the pool
-        pass
 
     def _nothing(self):
         assert 2 + 2 == 4
@@ -189,9 +190,10 @@ class APITasks(TaskSet):
                 logger.debug("Set up {0} Info".format(api_call))
 
             elif api_call == "Redundant Ts Segment":
-                cls.ts_segment_urls = pool_factory.get_redundant_ts_segment_urls()
+                cls.ts_segment_urls = pool_factory.get_redundant_ts_segment_urls(cls.env, normal_min)
                 logger.debug("Set up {0} Info".format(api_call))
                 #TODO: grab from pool factory
+
             else:
                 logger.error("{0} is not a valid API call - valid api calls {1}".format(api_call, APITasks._task_method_realtion.keys()))
 
@@ -208,6 +210,20 @@ class APITasks(TaskSet):
         cls.tasks = tasks_to_be
         logger.debug("tasks set to {0}".format(tasks_to_be))
 
+
+    @staticmethod
+    def _get_and_validate_ts_segment(locust, ts_url, expected_content_hash):
+        call_name = "{env}-ts_request_validation".format(env=APITasks.env)
+        with locust.client.request("GET", ts_url, name=call_name, catch_response=True) as response:
+            try:
+                response.raise_for_status()
+            except RequestException as e:
+                response.failure(e)
+            response_content = response.content
+            if hash(response_content) != expected_content_hash:
+                response.failure("Incorrect content received")
+            else:
+                response.success()
 
     @staticmethod
     def post_json_csm_copy(locust, json_info, url):
@@ -259,7 +275,7 @@ class APITasks(TaskSet):
 
 class APIUser(HttpLocust):
     """
-    Locust user class that does requests to the API_Load_Test web server running on localhost
+    Locust user class that does requests to the Load_Test web server running on localhost
     """
 
     min_wait = 1 * SECONDS

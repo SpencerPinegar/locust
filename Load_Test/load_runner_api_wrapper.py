@@ -1,5 +1,5 @@
 from requests.exceptions import ConnectionError
-from API_Load_Test.exceptions import TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode, \
+from Load_Test.exceptions import TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode, \
     InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
 
 import os

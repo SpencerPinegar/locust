@@ -1,6 +1,6 @@
-from API_Load_Test.test.api_test import APITest
-from API_Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
-from API_Load_Test.exceptions import TestAlreadyRunning
+from Load_Test.test.api_test import APITest
+from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.exceptions import TestAlreadyRunning
 
 class TestLoadRunnerAPIWrapper(APITest):
 

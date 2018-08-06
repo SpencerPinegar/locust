@@ -1,6 +1,6 @@
-from API_Load_Test.Config.config import Config
+from Load_Test.Config.config import Config
 import os
-from API_Load_Test.test.api_test import APITest
+from Load_Test.test.api_test import APITest
 
 class TestConfig(APITest):
 

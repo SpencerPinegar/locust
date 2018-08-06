@@ -95,7 +95,18 @@ SQL_ROUTES_STATEMENTS = {
                                 GROUP BY fr.user_id
                                 HAVING count(fr.*) >= {min} AND count(fr.*) <= {max})
     
-    """
+    """,
+
+    "Redundant Ts Segment": """
+                                
+                                SELECT r.playback_qvt from rsstuff_rsrecording r
+                                WHERE r.playable = TRUE and 
+                                r.active = TRUE and 
+                                r.rec_end < now() and 
+                                r.health_percent = 100 and 
+                                r.state = 3
+                                LIMIT 1
+    """,
 
 }
 

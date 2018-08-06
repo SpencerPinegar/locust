@@ -1,4 +1,4 @@
-from API_Load_Test.api_app import start_app
+from Load_Test.api_app import start_app
 
 
 

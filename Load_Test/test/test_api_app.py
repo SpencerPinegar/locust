@@ -1,7 +1,7 @@
-from API_Load_Test.test.api_test import APITest
-from API_Load_Test.api_app import app, extension
+from Load_Test.test.api_test import APITest
+from Load_Test.api_app import app, extension
 import requests
-from API_Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
 import random
 import backoff
 import os

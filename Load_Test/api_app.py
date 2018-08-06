@@ -1,8 +1,8 @@
 from flask import Flask
 from flask_jsonrpc import JSONRPC
-from API_Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
-from API_Load_Test.load_runner import LoadRunner
-from API_Load_Test.Config.config import Config
+from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.load_runner import LoadRunner
+from Load_Test.Config.config import Config
 
 
 # TODO: make Initial LoadRunner Variables come from config file

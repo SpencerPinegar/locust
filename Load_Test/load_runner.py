@@ -1,7 +1,7 @@
 import datetime
 import json
 import os
-from API_Load_Test.exceptions import NotEnoughAvailableCores
+from Load_Test.exceptions import NotEnoughAvailableCores
 
 import psutil
 import shlex
@@ -15,10 +15,10 @@ import requests
 from requests.exceptions import ConnectionError
 import backoff
 
-from API_Load_Test.exceptions import LoadRunnerFailedClose, LocustUIUnaccessible, SlaveInitilizationException, \
+from Load_Test.exceptions import LoadRunnerFailedClose, LocustUIUnaccessible, SlaveInitilizationException, \
     AttemptAccessUIWhenNoWeb, FailedToStartLocustUI
 
-from API_Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
+from Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
                     datefmt='%a, %d %b %Y %H:%M:%S')

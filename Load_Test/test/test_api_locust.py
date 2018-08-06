@@ -1,11 +1,11 @@
-from API_Load_Test.test.api_test import APITest
+from Load_Test.test.api_test import APITest
 
 
 class TestAPILocust(APITest):
 
 
     def test_user_recordings_ribbon_route_load_v1(self):
-        self._test_undistributed("User Recordings Ribbon", 1, False)
+        self._test_undistributed("User Recordings ribbon", 1, True)
 
 
 
@@ -33,6 +33,12 @@ class TestAPILocust(APITest):
 
     def test_list_rules_v1(self):
         self._test_undistributed("List Rules", 1, False)
+
+
+
+
+    def test_redundant_ts_segment(self):
+        self._test_undistributed("Redundant Ts Segment", 1, True)
 
     def test_do_nothing_cpu_used(self):
         self._test_undistributed("Nothing", 1, False, assert_results=False)

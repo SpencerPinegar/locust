@@ -1,6 +1,6 @@
 import uuid
 from uuid import uuid4
-from API_Load_Test.Config.sql_route_statements import DATA_FACTORY_ROUTES
+from Load_Test.Config.sql_route_statements import DATA_FACTORY_ROUTES
 import requests
 import json
 
