@@ -111,59 +111,74 @@ class RequestPoolFactory:
 
 
     def get_redundant_ts_segment_urls(self, env, size, **kwargs):
-        route_name = "Redundant Ts Segment"
-        conn = self._get_connection(env)
-        querry = self.config.get_function_querry(route_name)
-        try:
-            with conn.cursor() as cur:
-                cur.execute(querry)
-                data = cur.fetchall()
-                self.max_pool_size = len(data)
+        ts_hosts = ["http://p-dc10-dvrmfs-2122.rp.movetv.com/a1093a971dd24afd8a75ecc72025910b/a2b88f28919411e8bd4c0025b5472111/5db4cfcedce811e7a824124234136d4e/p0500006740.ts",
+                   "http://d-gp2-dvrmfs-1124.rd.movetv.com/be275c33fe5947c494e7e65b3c5e5a89/0c756d68918211e8b9630025b5472210/6c48edbedb6b11e78e3900505697cbbf/p09000025a0.ts",
+                    "http://d-gp2-dvrmfs-1123.rd.movetv.com/58de947979af4b81bc31dd243d71e6af/48b31b9e995d11e882500025b5472115/5eac943aba8711e7b74e0a3e7092b342/p0500004b30.ts",
+                    "http://d-gp2-dvrmfs-1122.rd.movetv.com/0ddd0ba4dd18460f98ce905087b62746/79bc40e6956e11e89d960025b5471211/2e65e682ba8711e7b6fb0a34fb89c4bc/p0500003980.ts"
+                   ]
+        return_stream = {}
+        for ts_host in ts_hosts:
+            ts_request = requests.get(ts_host)
+            if ts_request.status_code != 200:
+                assert False is True #
 
-        except Exception as e:
-            logger.exception(e)
-            sys.exit(1)
-        else:
-            logger.info("Got QVT")
-            qvt_host = data[0][0]
-            qvt_response = requests.get(qvt_host)
-            if qvt_response.status_code != 200:
-                logger.error("Could not reach QVT Resource {qvt}".format(qvt=qvt_host))
-            qvt_json = json.loads(qvt_response.content)
-            m3u8_host = qvt_json[u"playback_info"][u"m3u8_url_template"]
-            m3u8_host = m3u8_host.replace("$encryption_type$", "internal")
-            m3u8_resposne = requests.get(m3u8_host)
-            if m3u8_resposne.status_code != 200:
-                logger.error("Could not reach M3U8 Resource {M3U8}".format(M3U8=m3u8_host))
-            m3u8_manifest = m3u8_resposne.content
-            for line in m3u8_manifest.splitlines():
-                if line.startswith("#"):
-                    continue
-                else:
-                    stream = line
-                    break
 
-            stream_host = m3u8_host.replace("internal_master.m3u8", stream)
-            stream_response = requests.get(stream_host)
-            if stream_response.status_code != 200:
-                logger.error("Could not reach Stream Resource {stream}".format(stream=stream_host))
-            stream_content = stream_response.content
-            return_streams = {}
-            for line in stream_content.splitlines():
-                if line.startswith("#"):
-                    continue
-                elif line.endswith(".ts"):
-                    ts_host = m3u8_host.replace("internal_master.m3u8", line)
-                    ts_response = requests.get(ts_host)
-                    if ts_response.status_code != 200:
-                        logger.error("Could not reach Ts Segement {ts}".format(ts=ts_host))
-                    else:
-                        ts_content = ts_response.content
-                        ts_hash = hashlib.md5(str(ts_content)).hexdigest()
-                        return_streams.setdefault(ts_host, ts_hash)
-                        if len(return_streams) is size:
-                            return list(return_streams.items())
-            logger.error("Could Not find enough ts Segments")
+            ts_hash = hashlib.md5(str(ts_request.content)).hexdigest()
+            return_stream.setdefault(ts_host, ts_hash)
+        return list(return_stream.items())
+        # route_name = "Redundant Ts Segment"
+    #         # conn = self._get_connection(env)
+    #         # querry = self.config.get_function_querry(route_name)
+    #         # try:
+    #         #     with conn.cursor() as cur:
+    #         #         cur.execute(querry)
+    #         #         data = cur.fetchall()
+    #         #         self.max_pool_size = len(data)
+    #         #
+    #         # except Exception as e:
+    #         #     logger.exception(e)
+    #         #     sys.exit(1)
+    #         # else:
+    #         #     logger.info("Got QVT")
+    #         #     qvt_host = data[0][0]
+    #         #     qvt_response = requests.get(qvt_host)
+    #         #     if qvt_response.status_code != 200:
+    #         #         logger.error("Could not reach QVT Resource {qvt}".format(qvt=qvt_host))
+    #         #     qvt_json = json.loads(qvt_response.content)
+    #         #     m3u8_host = qvt_json[u"playback_info"][u"m3u8_url_template"]
+    #         #     m3u8_host = m3u8_host.replace("$encryption_type$", "internal")
+    #         #     m3u8_resposne = requests.get(m3u8_host)
+    #         #     if m3u8_resposne.status_code != 200:
+    #         #         logger.error("Could not reach M3U8 Resource {M3U8}".format(M3U8=m3u8_host))
+    #         #     m3u8_manifest = m3u8_resposne.content
+    #         #     for line in m3u8_manifest.splitlines():
+    #         #         if line.startswith("#"):
+    #         #             continue
+    #         #         else:100
+    #         #             stream = line
+    #         #             break
+    #         #
+    #         #     stream_host = m3u8_host.replace("internal_master.m3u8", stream)
+    #         #     stream_response = requests.get(stream_host)
+    #         #     if stream_response.status_code != 200:
+    #         #         logger.error("Could not reach Stream Resource {stream}".format(stream=stream_host))
+    #         #     stream_content = stream_response.content
+    #         #     return_streams = {}
+    #         #     for line in stream_content.splitlines():
+    #         #         if line.startswith("#"):
+    #         #             continue
+    #         #         elif line.endswith(".ts"):
+    #         #             ts_host = m3u8_host.replace("internal_master.m3u8", line)
+    #         #             ts_response = requests.get(ts_host)
+    #         #             if ts_response.status_code != 200:
+    #         #                 logger.error("Could not reach Ts Segement {ts}".format(ts=ts_host))
+    #         #             else:
+    #         #                 ts_content = ts_response.content
+    #         #                 ts_hash = hashlib.md5(str(ts_content)).hexdigest()
+    #         #                 return_streams.setdefault(ts_host, ts_hash)
+    #         #                 if len(return_streams) is size:
+    #         #                     return list(return_streams.items())
+    #         #     logger.error("Could Not find enough ts Segments")
 
     # TODO: Create Functions To get Create/Delete Request Pools
 
