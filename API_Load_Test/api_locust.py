@@ -84,6 +84,11 @@ class APITasks(TaskSet):
         locust.client.post(APITasks.lr_url, json=json_data)
 
 
+    def _redundant_ts_segment(self):
+        #Get ts url from the APITasks setup
+        #Have the locust requests to the pool
+        pass
+
     def _nothing(self):
         assert 2 + 2 == 4
         pass
@@ -102,8 +107,11 @@ class APITasks(TaskSet):
         "Mark Watched": _mark_watched,
         "Update Rules": _update_user_rules,
         "List Rules": _list_user_rules,
+
+
+        "Redundant Ts Segment": _redundant_ts_segment,
         "Nothing": _nothing,
-    }
+    }#TODO: FIND WAY TO MAKE VALID API ROUTES
 
 
 
@@ -176,8 +184,14 @@ class APITasks(TaskSet):
             elif api_call == "List Rules":
                 cls.list_rules_pool, cls.lr_url = pool_factory.get_list_rules_pool_and_route(cls.version, cls.env, normal_min, normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
+
             elif api_call == "Nothing":
                 logger.debug("Set up {0} Info".format(api_call))
+
+            elif api_call == "Redundant Ts Segment":
+                cls.ts_segment_urls = pool_factory.get_redundant_ts_segment_urls()
+                logger.debug("Set up {0} Info".format(api_call))
+                #TODO: grab from pool factory
             else:
                 logger.error("{0} is not a valid API call - valid api calls {1}".format(api_call, APITasks._task_method_realtion.keys()))
 

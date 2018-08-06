@@ -108,6 +108,13 @@ class RequestPoolFactory:
         route = self._get_route(route_name, version)
         return pool, route
 
+
+    def get_redundant_ts_segment_urls(self):
+        #Find resource
+        #Grab 4 of lowest level ts segments
+        #put them in a list
+        pass
+
     # TODO: Create Functions To get Create/Delete Request Pools
 
     def _get_route(self, route, version):
