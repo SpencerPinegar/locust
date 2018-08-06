@@ -159,10 +159,10 @@ class RequestPoolFactory:
                         logger.error("Could not reach Ts Segement {ts}".format(ts=ts_host))
                     else:
                         ts_content = ts_response.content
-                        ts_hash = hash(ts_content) #What we use to evaluate content
+                        ts_hash = hashlib.md5(str(ts_content)).hexdigest()
                         return_streams.setdefault(ts_host, ts_hash)
                         if len(return_streams) is size:
-                            return return_streams
+                            return list(return_streams.items())
             logger.error("Could Not find enough ts Segments")
 
     # TODO: Create Functions To get Create/Delete Request Pools

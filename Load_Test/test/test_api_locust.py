@@ -5,7 +5,7 @@ class TestAPILocust(APITest):
 
 
     def test_user_recordings_ribbon_route_load_v1(self):
-        self._test_undistributed("User Recordings ribbon", 1, True)
+        self._test_undistributed("User Recordings Ribbon", 1, True)
 
 
 

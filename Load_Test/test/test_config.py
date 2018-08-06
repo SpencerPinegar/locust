@@ -15,7 +15,7 @@ class TestConfig(APITest):
 
         self.expected_routes_params = {"Route", "Versions", "Normal Min", "Normal Max", "Version 1", "List"}
         self.expected_api_env_params = {"VIP Host", "Node Host", "Total Nodes"}
-        self.expected_api_base = {"Environments", "Routes"}
+        self.expected_api_base = {"Environments", "Routes", "Misc Tests"}
 
 
 

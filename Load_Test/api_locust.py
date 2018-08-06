@@ -10,6 +10,7 @@ from Load_Test.Config.config import Config
 from Load_Test.environment_wrapper import EnvironmentWrapper
 from Load_Test.request_pool import RequestPoolFactory
 import random
+import hashlib
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -86,9 +87,21 @@ class APITasks(TaskSet):
 
     def _redundant_ts_segment(locust):
         ts_url, ts_content_hash = random.choice(APITasks.ts_segment_urls)
-        APITasks._get_and_validate_ts_segment(locust, ts_url, ts_content_hash)
-        #Get ts url from the APITasks setup
-        #Have the locust requests to the pool
+        call_name = "{env} - ts request validation".format(env=APITasks.env, url=ts_url)
+        with locust.client.get(ts_url,name=call_name, catch_response=True) as response:
+            try:
+                response.raise_for_status()
+            except RequestException as e:
+                response.failure(e)
+            else:
+                content = response.content
+                created_content_hash = hashlib.md5(str(content)).hexdigest()
+                if created_content_hash != ts_content_hash:
+                    response.failure("Invalid TS Segment - Expected {ex}, Created {created}".format(ex=ts_content_hash, created=created_content_hash))
+                else:
+                    response.success()
+
+        #APITasks._get_and_validate_ts_segment(locust, ts_url, ts_content_hash)
 
     def _nothing(self):
         assert 2 + 2 == 4
@@ -169,19 +182,22 @@ class APITasks(TaskSet):
                                                                                                          normal_min,
                                                                                                          normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
+
             elif api_call == "Protect Recordings":
                 cls.protect_recordings_pool, cls.pr_url = pool_factory.get_protect_recordings_pool_and_route(cls.version, cls.env,
                                                                                                      normal_min,
                                                                                                      normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
+
             elif api_call == "Mark Watched":
                 cls.marked_watched_pool, cls.mw_url = pool_factory.get_mark_watched_pool_and_route(cls.version, cls.env, normal_min,
                                                                                            normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
+
             elif api_call == "Update Rules":
-                cls.update_rules_pool, cls.ur_url = pool_factory.get_update_rules_pool_and_route(cls.version, cls.env, normal_min,
-                                                                                         normal_max)
+                cls.update_rules_pool, cls.ur_url = pool_factory.get_update_rules_pool_and_route(cls.version, cls.env, normal_min,                                                                normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
+
             elif api_call == "List Rules":
                 cls.list_rules_pool, cls.lr_url = pool_factory.get_list_rules_pool_and_route(cls.version, cls.env, normal_min, normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
@@ -192,7 +208,7 @@ class APITasks(TaskSet):
             elif api_call == "Redundant Ts Segment":
                 cls.ts_segment_urls = pool_factory.get_redundant_ts_segment_urls(cls.env, normal_min)
                 logger.debug("Set up {0} Info".format(api_call))
-                #TODO: grab from pool factory
+
 
             else:
                 logger.error("{0} is not a valid API call - valid api calls {1}".format(api_call, APITasks._task_method_realtion.keys()))
@@ -211,19 +227,7 @@ class APITasks(TaskSet):
         logger.debug("tasks set to {0}".format(tasks_to_be))
 
 
-    @staticmethod
-    def _get_and_validate_ts_segment(locust, ts_url, expected_content_hash):
-        call_name = "{env}-ts_request_validation".format(env=APITasks.env)
-        with locust.client.request("GET", ts_url, name=call_name, catch_response=True) as response:
-            try:
-                response.raise_for_status()
-            except RequestException as e:
-                response.failure(e)
-            response_content = response.content
-            if hash(response_content) != expected_content_hash:
-                response.failure("Incorrect content received")
-            else:
-                response.success()
+
 
     @staticmethod
     def post_json_csm_copy(locust, json_info, url):
