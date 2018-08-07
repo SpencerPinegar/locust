@@ -80,22 +80,28 @@ class TestLoadRunnerAPIWrapper(APITest):
 
 
 
+    def test_test_route_as_api_route(self):
+        self._setup_and_start_benchmark_test({"Nothing": 1})
+        self._assert_running()
+        self._kill_test()
 
 
 
 
 
 
-
-
-    def _setup_manual_test(self):
-        self.load_runner_api_wrapper.setup_manuel_test(self.api_call, self.env, self.node, self.version, self.n_min,
+    def _setup_manual_test(self, api_call=None):
+        if api_call is None:
+            api_call = self.api_call
+        self.load_runner_api_wrapper.setup_manuel_test(api_call, self.env, self.node, self.version, self.n_min,
                                                        self.n_max)
 
 
 
-    def _setup_and_start_benchmark_test(self):
-        self.load_runner_api_wrapper.setup_and_start_benchmark_test(self.api_call, self.env, self.node, self.version, self.n_min,
+    def _setup_and_start_benchmark_test(self, api_call=None):
+        if api_call is None:
+            api_call = self.api_call
+        self.load_runner_api_wrapper.setup_and_start_benchmark_test(api_call, self.env, self.node, self.version, self.n_min,
                                                                     self.n_max, self.n_clients, self.hatch_rate, self.time, False)
 
     def _start_manuel_test(self):

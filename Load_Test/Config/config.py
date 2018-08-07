@@ -31,7 +31,9 @@ class Config(object):
         self._quick_routes = self._settings["RecAPI Settings"]["Routes"]
         self._quick_api_env = self._settings["RecAPI Settings"]["Environments"]
 
-
+    @property
+    def test_routes(self):
+        return self._settings["RecAPI Settings"]["Misc Tests"]
 
 
     @property
@@ -154,7 +156,14 @@ class Config(object):
         return self._quick_api_env[env]["Total Nodes"]
 
     def get_route_versions(self, route):
-        return self._quick_routes[route]["Versions"]
+        try:
+            return self._quick_routes[route]["Versions"]
+        except KeyError:
+            if route in self.test_routes:
+                return [1,2,4]
+            else:
+                return []
+
 
     def get_db_environments(self):
         return self.settings["DataBase Settings"]["Environments"].keys()
@@ -208,7 +217,7 @@ class Config(object):
             return False
 
     def is_route(self, route_name):
-        if route_name in self.api_routes:
+        if route_name in self.api_routes + self.test_routes:
             self._verbose_log("Found Route Name {0}".format(route_name))
             return True
         else:

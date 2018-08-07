@@ -16,6 +16,7 @@ class TestConfig(APITest):
         self.expected_routes_params = {"Route", "Versions", "Normal Min", "Normal Max", "Version 1", "List"}
         self.expected_api_env_params = {"VIP Host", "Node Host", "Total Nodes"}
         self.expected_api_base = {"Environments", "Routes", "Misc Tests"}
+        self.expected_misc_tests = {"Nothing", "Redundant Ts Segment"}
 
 
 
@@ -177,7 +178,7 @@ class TestConfig(APITest):
         for route in self.expected_routes:
             self.assertEqual(len(self.config._get_route_info(route)["Versions"]), len(self.config.get_route_versions(route)))
             for version, route in self.config.get_api_routes(route).items():
-                self.assertTrue(route.__contains__(str(version)))
+                self.assertTrue(str(version) in route)
 
     def test_get_api_version_fields(self):
         for route in self.expected_routes:
@@ -186,6 +187,12 @@ class TestConfig(APITest):
             self.assertEqual(versions_set, api_route_spec.keys())
             for values in api_route_spec.keys():
                 self.assertEqual(api_route_spec[values].keys(), ["Required Fields", "Optional Fields"])
+
+
+    def test_misc_routes(self):
+        for route in self.expected_misc_tests:
+            self.assertTrue(self.config.is_route(route))
+
 
 
 
