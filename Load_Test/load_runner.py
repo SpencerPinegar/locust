@@ -253,16 +253,19 @@ class LoadRunner:
             return_code = process.wait(timeout=LoadRunner.Max_Process_Wait_Time)
             info = self.master.communicate()
         except sp.TimeoutExpired as e:
-            return_code, info = self._safe_kill(process)
+            info, return_code = self._safe_kill(process)
         return info, return_code
 
     def _safe_kill(self, process):
         if process is None:
             return "Process was None", -15
         try:
-            process.kill()
-            return_code = process.poll()
+            while process.poll() is None:
+                process.kill()
+            return_code = 0 if process.poll() == -9 else process.poll()
             info = process.communicate()
+            if None is return_code:
+                print("what")
             return info, return_code
         except OSError as e:
             if e.strerror == "No such process":
