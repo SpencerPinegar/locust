@@ -6,9 +6,7 @@ from locust import HttpLocust, TaskSet
 import locust.stats
 from requests.exceptions import RequestException
 
-from Load_Test.Config.config import Config
-from Load_Test.environment_wrapper import EnvironmentWrapper
-from Load_Test.request_pool import RequestPoolFactory
+from Load_Test import Config, EnvironmentWrapper, RequestPoolFactory
 import random
 import hashlib
 

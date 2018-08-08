@@ -1,10 +1,14 @@
 from requests.exceptions import ConnectionError
-from Load_Test.exceptions import TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode, \
-    InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, FailedToStartLocustUI
+from Load_Test.exceptions import (TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode,
+                                  InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, LostTestRunnerAPIObject)
+from Load_Test.config import Config
+from Load_Test.load_runner import LoadRunner
 
 import os
 
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
+
+
 class LoadRunnerAPIWrapper:
     # TODO make come from config
 
@@ -12,30 +16,40 @@ class LoadRunnerAPIWrapper:
     Logs_Folder = os.path.join(API_Load_Test_Dir, "Load_Logs")
     Master_Locust_File = os.path.join(API_Load_Test_Dir, "master_locust.py")
     Slave_Locust_File = os.path.join(API_Load_Test_Dir, "api_locust.py")
-    master_host_info = ("127.0.0.1", 5557)
-    web_ui_host_info = ("localhost", 8089)
-    web_api_host_info = ("localhost", 5000)
-    test_runner_communication_info = ("127.0.0.1", 8000)
+    master_host_info = ("0.0.0.0", 5557)
+    web_ui_host_info = ("0.0.0.0", 8089)
+    web_api_host_info = ("0.0.0.0", 5000)
+    test_runner_communication_info = ("0.0.0.0", 8000)
 
     Current_Benchmark_Test_Msg = u"A benchmark test is currently running on this server - It will not be available through the UI"
     Current_Manuel_Test_Msg = u"A manuel test is currently running on this server - view it through the UI"
     Setup_Benchmark_Test_Msg = u"A benchmark test is setup on this server - It will run and not be available through the UI"
     Setup_Manuel_Test_Msg = u"A manuel test is setup on this server - view/run it through the UI"
+    TEST_API_WRAPPER = None
+    Extension = '/LoadServer'
+
+    @classmethod
+    def setup(cls):
+        config = Config()
+        load_runner = LoadRunner(LoadRunnerAPIWrapper.master_host_info, LoadRunnerAPIWrapper.web_ui_host_info,
+                                 LoadRunnerAPIWrapper.Slave_Locust_File, LoadRunnerAPIWrapper.Master_Locust_File,
+                                 config)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER = LoadRunnerAPIWrapper(config, load_runner)
+
+    @classmethod
+    def teardown(cls):
+        if LoadRunnerAPIWrapper.TEST_API_WRAPPER is None:
+            raise LostTestRunnerAPIObject("The Load Runner API Wrapper was None")
+        else:
+            LoadRunnerAPIWrapper.TEST_API_WRAPPER.stop_tests()
+
+
+
 
 
     def __init__(self, config, loadrunner):
         self.config = config
         self._test_runner = loadrunner
-
-
-    @property
-    def default_2_cores(self):
-        return self._test_runner.default_2_cores
-
-    @default_2_cores.setter
-    def default_2_cores(self, value):
-        self._test_runner.default_2_cores = value
-
 
 
     @property
@@ -58,7 +72,6 @@ class LoadRunnerAPIWrapper:
 
         return (is_running, test_type)
 
-
     def is_setup(self):
         is_setup = True
         test_type = None
@@ -79,7 +92,6 @@ class LoadRunnerAPIWrapper:
         finally:
             return is_setup, test_type
 
-
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
         # TODO find a way to distribute segemented test data when running
         pass
@@ -90,39 +102,30 @@ class LoadRunnerAPIWrapper:
         self._verify_params(api_call_weight, env, version, node)
         file_prefix = "Manuel"
         self._test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
-                                            stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
-                                            log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                            log_level="ERROR")
+                                         stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                                         log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
+                                         log_level="ERROR")
 
-    def setup_and_start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate, run_time,
+    def setup_and_start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate,
+                                       run_time,
                                        reset_stats):
         self.__raise_if_running()
         self.stop_tests()
         self._verify_params(api_call_weight, env, version, node)
         file_prefix = "Benchmark"
         self._test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
-                                            stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
-                                            log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                            log_level="ERROR",
-                                            no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
-                                            run_time=run_time, reset_stats=reset_stats)
-
-
+                                         stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                                         log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
+                                         log_level="ERROR",
+                                         no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
+                                         run_time=run_time, reset_stats=reset_stats)
 
     def start_manuel_from_ui(self, locust_count, hatch_rate):
         self.__raise_if_running()
         self._test_runner.run_from_ui(locust_count, hatch_rate)
 
-
-
-
-
     def stop_tests(self):
         self._test_runner.stop_test()
-
-
-
-
 
     def _verify_params(self, api_call_weight, env, version, node):
         self.__verify_api_routes(api_call_weight)
@@ -153,7 +156,6 @@ class LoadRunnerAPIWrapper:
                 raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
                     version=version, route=route_name
                 ))
-
 
     def __raise_if_running(self):
         test_running, msg = self.is_running()

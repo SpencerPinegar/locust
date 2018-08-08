@@ -79,3 +79,15 @@ class NotEnoughAvailableCores(Exception):
     This Exception is raised when someone attempts to run multi-core locust on a machine without enough available cores
     """
     pass
+
+class LostTestRunnerAPIObject(Exception):
+    """
+    This Exception is raised when someone attempts to teardown a testAPIWrapper and it cannot be found
+    """
+    pass
+
+class NeedExtensionArgument(Exception):
+    """
+    This Exception is raised when someone attempts to start a flask webapp without an extension
+    """
+

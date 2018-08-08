@@ -6,10 +6,10 @@ import logging
 import os
 import yaml #PYYAML
 import psycopg2 #psycopg2
-from Load_Test.Config.sql_route_statements import SQL_ROUTES_STATEMENTS
+from Load_Test.sql_route_statements import SQL_ROUTES_STATEMENTS
 
 HERE = os.path.abspath(__file__)
-DIR_PATH = os.path.dirname(HERE)
+MAIN_DIR_PATH = os.path.dirname(os.path.dirname(HERE))
 
 
 
@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 class Config(object):
 
-    SETTINGS_PATH = os.path.join(DIR_PATH, "SETTINGS.yaml")
+    SETTINGS_PATH = os.path.join(MAIN_DIR_PATH, "SETTINGS.yaml")
 
     def __init__(self, debug=False):
 

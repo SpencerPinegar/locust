@@ -1,24 +1,22 @@
-from Load_Test.test.api_test import APITest
-from Load_Test.api_app import app, extension
-import requests
 from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.api_test import APITest
 import random
 import backoff
 import os
 from requests.exceptions import ConnectionError
-from multiprocessing import Process
 import json
+from multiprocessing import Process
+import requests
+from main import main_func
+
 class TestAPIApp(APITest):
 
     def setUp(self):
         super(TestAPIApp, self).setUp()
         self.api_host_info = LoadRunnerAPIWrapper.web_api_host_info
-        self.server = Process(target=app.run)
+        self.extension = LoadRunnerAPIWrapper.Extension
+        self.server = Process(target=main_func, args=(True,))
         self.server.start()
-        # if self._is_multi_core_capable():
-        #     test_api_wrapper.default_2_cores = False
-        # else:
-        #     test_api_wrapper.default_2_cores = True
 
 
     def tearDown(self):
@@ -26,7 +24,6 @@ class TestAPIApp(APITest):
         self.server.terminate()
         self.server.join()
         super(TestAPIApp, self).tearDown()
-
 
 
     def test_ping_on(self):
@@ -260,6 +257,8 @@ class TestAPIApp(APITest):
         self.assertEqual(expected_error, content["error"])
 
 
+
+
     def __get_benchmark_test_params(self, **kwargs):
         expected_params = self.__get_setup_manuel_params(**kwargs)
 
@@ -315,19 +314,18 @@ class TestAPIApp(APITest):
         response = self.__request_api(json)
         return call_id, response
 
+
     @backoff.on_exception(backoff.expo,
                           ConnectionError,
                           max_time=4)
     def __request_api(self, json):
         web_api_host = self.api_host_info[0]
         web_api_port = self.api_host_info[1]
-        if web_api_host == "localhost":
+        if web_api_host in["localhost", "127.0.0.1", "0.0.0.0"]:
             os.environ['no_proxy'] = '127.0.0.1,localhost'
-            host = "http://{web_api_host}:{web_api_port}".format(web_api_host=web_api_host, web_api_port=web_api_port)
-            host = host + extension
-        else:
-            host = "https://{web_api_host}".format(web_api_host=web_api_host)
-            host = host + extension
+        host = "http://{web_api_host}:{web_api_port}".format(web_api_host=web_api_host, web_api_port=web_api_port)
+        host = host + self.extension
+
         response = requests.post(host, json=json)
         return response
 

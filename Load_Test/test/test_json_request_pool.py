@@ -1,11 +1,9 @@
-from unittest import TestCase
-from Load_Test.Config.config import Config
-from Load_Test.request_pool import _ReadOnlyRequestPool, RequestPoolFactory
-from Load_Test.test.api_test import APITest
+from Load_Test.config import Config
+from Load_Test.api_test import APITest
 import hashlib
 import json
 import requests
-from Load_Test.Config.sql_route_statements import TEST_SQL_STATEMENTS
+from Load_Test.sql_route_statements import TEST_SQL_STATEMENTS
 import random
 config = Config()
 
@@ -372,7 +370,7 @@ class TestMiscFunctions(APITest):
     def test_get_redundant_ts_segment_url(self):
         route_name, version = ("Redundant Ts Segment", None)
         redudntant_ts_segments = self.PoolFactory.get_redundant_ts_segment_urls("DEV2", 30)
-        for i in range(100):
+        for i in range(5):
             ts_url, content_hash = random.choice(redudntant_ts_segments)
             ts_resp = requests.get(ts_url)
             self.assertEqual(200, ts_resp.status_code, "Could not access ts segment {ts}".format(ts=ts_url))
