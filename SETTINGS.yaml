@@ -69,9 +69,9 @@ RecAPI Settings:
 
     User Recordings Ribbon:
       Route: user-recordings
-      Versions: [1, 2, 4]
-      Normal Min: 30
-      Normal Max: 60
+      Versions: [1, 2, 4, 5]
+      Normal Min: 40
+      Normal Max: 50
       List: false
       Version 1:
         Required Fields:
@@ -94,6 +94,16 @@ RecAPI Settings:
           watched: bool
           ribbon_type: [rs, ls, both]
       Version 4:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields:
+          rec_guid: guid
+          type: [recently_recorded, recorded_by_name, pending_by_name, pending_by_date, small]
+          page_size: int
+          page_number: int
+          watched: bool
+          ribbon_type: [rs, ls, both]
+      Version 5:
         Required Fields:
           user: {arg1: guid, pos: 0}
         Optional Fields:

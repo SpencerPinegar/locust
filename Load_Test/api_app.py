@@ -1,7 +1,7 @@
-from flask import Flask, request
+from flask import Flask, request, jsonify
 from flask_jsonrpc import JSONRPC
 from Load_Test import LoadRunnerAPIWrapper
-
+from flask_cors import cross_origin, CORS
 
 from Load_Test.exceptions import NeedExtensionArgument
 
@@ -15,6 +15,7 @@ def thread_webAPP(extension, **kwargs):
     app = Flask(__name__)
     jsonrpc = JSONRPC(app, extension, enable_web_browsable_api=True)
 
+
     @jsonrpc.method("stopTest() -> dict")
     def stop_test():
         LoadRunnerAPIWrapper.TEST_API_WRAPPER.stop_tests()
@@ -26,16 +27,18 @@ def thread_webAPP(extension, **kwargs):
 
     @jsonrpc.method("isRunning() -> dict")
     def is_running():
-        return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
+        return_value = LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
+        return return_value
 
     @jsonrpc.method("isSetup() -> dict")
     def is_setup():
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_setup()
 
     @jsonrpc.method(
-        "setupManuelTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int) -> dict",
+        "setupManualTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int) -> dict",
         validate=True)
-    def setup_manuel_test(api_call_weight, env, node, version, n_min, n_max):
+    def setup_manual_test(api_call_weight, env, node, version, n_min, n_max):
+
         LoadRunnerAPIWrapper.TEST_API_WRAPPER.setup_manuel_test(api_call_weight, env, node, version, n_min, n_max)
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_setup()
 
@@ -43,6 +46,7 @@ def thread_webAPP(extension, **kwargs):
     def start_manuel_test(num_users, hatch_rate):
         LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_manuel_from_ui(num_users, hatch_rate)
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
+
 
     @jsonrpc.method("startBenchmarkTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int,"
                     "num_clients=int, hatch_rate=float, run_time=str, reset_stats=bool) -> dict", validate=True)
@@ -53,11 +57,32 @@ def thread_webAPP(extension, **kwargs):
                                                                              run_time, reset_stats)
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
 
-    # @jsonrpc.method("shutdown()")
-    # def shutdown_server():
-    #     func = request.environ.get('werkzeug.server.shutdown')
-    #     if func is None:
-    #         raise RuntimeError('Not running with the Werkzeug Server')
-    #     func()
+    @jsonrpc.method("shutdown()")
+    def shutdown_server():
+        func = request.environ.get('werkzeug.server.shutdown')
+        if func is None:
+            raise RuntimeError('Not running with the Werkzeug Server')
+        func()
+
+
+    @app.route('/test', methods=["POST"])
+    def test():
+        data = request.get_data()
+        print(data)
+
+    def add_cors_headers(response):
+        response.headers['Access-Control-Allow-Origin'] = '*'
+
+        if request.method == 'OPTIONS':
+            response.headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS'
+            headers = request.headers.get('Access-Control-Request-Headers')
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type"
+            response.headers["Access-Control-Max-Age"] = 86400
+            if headers:
+                response.headers['Access-Control-Allow-Headers'] = headers
+
+        return response
+
+    app.after_request(add_cors_headers)
 
     app.run(**kwargs)

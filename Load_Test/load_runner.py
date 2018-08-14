@@ -343,8 +343,10 @@ class LoadRunner:
         web_ui_port = self.web_ui_host_info[1]
         masterbindHost = self.master_host_info[0]
         masterbindPort = self.master_host_info[1]
-        master_arg_string = "locust -f {master_file} -H {l_host} --master --master-bind-host={mb_host} --master-bind-port={mb_port}".format(
-            master_file=self.master_locust_file, l_host=host, mb_host=masterbindHost, mb_port=masterbindPort
+        locust_path = "locust"#self.__get_locust_file_dir()
+
+        master_arg_string = "{locust} -f {master_file} -H {l_host} --master --master-bind-host={mb_host} --master-bind-port={mb_port}".format(
+            locust=locust_path, master_file=self.master_locust_file, l_host=host, mb_host=masterbindHost, mb_port=masterbindPort
         )
         if csv_file is not None:
             master_arg_string = "{master_arg_string} --csv={file_name}".format(master_arg_string=master_arg_string,
@@ -375,9 +377,10 @@ class LoadRunner:
         host = self.config.get_api_host(env, node)
         masterhost = self.master_host_info[0]
         masterport = self.master_host_info[1]
+        locust_path = "locust"#self.__get_locust_file_dir()
 
-        slave_arg_string = "locust -f {slave_file} -H {l_host} --slave --master-host={m_host} --master-port={m_port}".format(
-            slave_file=self.slave_locust_file, l_host=host, m_host=masterhost, m_port=masterport
+        slave_arg_string = "{locust} -f {slave_file} -H {l_host} --slave --master-host={m_host} --master-port={m_port}".format(
+            locust = locust_path, slave_file=self.slave_locust_file, l_host=host, m_host=masterhost, m_port=masterport
         )
         if reset_stats:
             slave_arg_string = "{slave_arg_string} --reset-stats".format(slave_arg_string=slave_arg_string)
@@ -389,8 +392,10 @@ class LoadRunner:
 
         # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR)
         host = self.config.get_api_host(env, node)
-        undis_arg_string = "locust -f {undis_file} -H {l_host} ".format(
-            undis_file=self.slave_locust_file, l_host=host,
+        locust_path = "locust"#self.__get_locust_file_dir()
+
+        undis_arg_string = "{locust} -f {undis_file} -H {l_host} ".format(
+           locust=locust_path, undis_file=self.slave_locust_file, l_host=host,
         )
         if csv_file is not None:
             undis_arg_string = "{undis_arg_string} --csv={file_name}".format(undis_arg_string=undis_arg_string,
@@ -448,3 +453,5 @@ class LoadRunner:
             host = host + extension if extension is not None else host
         response = requests.request(request, host, **kwargs)
         return response
+
+

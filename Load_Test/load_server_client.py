@@ -43,7 +43,7 @@ class LoadServerClient:
 
     def setup_manuel_test(self, api_call, env, node, version, n_min, n_max):
         params = self.__setup_test_params(api_call, env, node, version, n_min, n_max)
-        call_id, respone = self.__remote_api_call("setupManuelTest", params)
+        call_id, respone = self.__remote_api_call("setupManualTest", params)
         return self.__clean_resp(respone)
 
     def run_manuel_test(self, num_users, hatch_rate):
@@ -51,14 +51,21 @@ class LoadServerClient:
             "num_users": num_users,
             "hatch_rate": hatch_rate
         }
-        call_id, response = self.__remote_api_call("startManuelTest", params)
+        call_id, response = self.__remote_api_call("startManualTest", params)
         return self.__clean_resp(response)
+
+
+
+    def shutdown(self):
+        call_id, response = self.__remote_api_call("shutdown", {})
+        return response
 
 
     def _setup_ts_segment_test(self):
         params = self.__setup_test_params({"Redundant Ts Segment": 1})
-        call_id, response = self.__remote_api_call("setupManuelTest", params)
+        call_id, response = self.__remote_api_call("setupManualTest", params)
         return self.__clean_resp(response)
+
 
 
     def __remote_api_call(self, method, params, call_id = None):

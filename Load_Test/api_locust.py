@@ -85,7 +85,8 @@ class APITasks(TaskSet):
 
     def _redundant_ts_segment(locust):
         ts_url, ts_content_hash = random.choice(APITasks.ts_segment_urls)
-        call_name = "{env} - ts request validation".format(env=APITasks.env, url=ts_url)
+        ts_prefix = ts_url.split("//")[1][0].lower()
+        call_name = "{env} - ts request validation".format(env=ts_prefix, url=ts_url)
         with locust.client.get(ts_url,name=call_name, catch_response=True) as response:
             try:
                 response.raise_for_status()
@@ -277,7 +278,7 @@ class APITasks(TaskSet):
 
 class APIUser(HttpLocust):
     """
-    Locust user class that does requests to the Load_Test web server running on localhost
+    Locust user class that does requests to the Performance_Test web server running on localhost
     """
 
     min_wait = 1 * SECONDS
