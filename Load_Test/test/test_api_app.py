@@ -152,7 +152,7 @@ class TestAPIApp(APITest):
 
     def _assert_manuel_setup_incorrect_params_test_run(self, test_msg, **kwargs):
         expected_params = self.__get_setup_manuel_params(**kwargs)
-        test_id, response = self.__remote_api_call("setupManuelTest", expected_params)
+        test_id, response = self.__remote_api_call("setupManualTest", expected_params)
         expected_error = {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'}
@@ -171,7 +171,7 @@ class TestAPIApp(APITest):
     def _assert_failed_manuel_start_other_test_already_running(self, test_msg):
 
         expected_params = self.__get_start_manuel_params()
-        the_id, response = self.__remote_api_call("startManuelTest", expected_params)
+        the_id, response = self.__remote_api_call("startManualTest", expected_params)
         self.__assert_error(response, the_id, {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'})
@@ -185,7 +185,7 @@ class TestAPIApp(APITest):
 
     def _assert_cant_start_unsetup_manuel(self):
         expected_params = self.__get_start_manuel_params()
-        call_id, response = self.__remote_api_call("startManuelTest", expected_params)
+        call_id, response = self.__remote_api_call("startManualTest", expected_params)
         self.__assert_error(response, call_id,
                             {u'message': u'OtherError: The /swarm locust URL could not be accessed', u'code': 500,
                              u'data': None, u'name': u'OtherError'})
@@ -206,13 +206,13 @@ class TestAPIApp(APITest):
 
     def _assert_setup_manuel_test(self):
         expected_params =self.__get_setup_manuel_params()
-        call_id, response = self.__remote_api_call("setupManuelTest", expected_params)
+        call_id, response = self.__remote_api_call("setupManualTest", expected_params)
         self.__assert_success(response, call_id, [True, LoadRunnerAPIWrapper.Setup_Manuel_Test_Msg])
 
 
     def _assert_start_manuel_test(self):
         expected_params = self.__get_start_manuel_params()
-        call_id, respone = self.__remote_api_call("startManuelTest", expected_params)
+        call_id, respone = self.__remote_api_call("startManualTest", expected_params)
         self.__assert_success(respone, call_id, [True, LoadRunnerAPIWrapper.Current_Manuel_Test_Msg])
 
 

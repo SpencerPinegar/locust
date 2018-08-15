@@ -1,7 +1,13 @@
 import json
 import os
-import Load_Test.exceptions
+import sys
+if sys.version_info[0] < 3:
+    from StringIO import StringIO
+else:
+    from io import StringIO
 
+import Load_Test.exceptions
+import pandas as pd
 import psutil
 import shlex
 import subprocess32 as sp
@@ -13,6 +19,7 @@ import time
 import requests
 from requests.exceptions import ConnectionError
 import backoff
+from Load_Test.exceptions import SlaveInitilizationException
 
 
 from Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
@@ -43,13 +50,14 @@ class LoadRunner:
     assumed_load_average_added = 1
     assumed_cpu_used = 7
     stat_interval = 2
-    per_process_used_cpu_running_threshold = 4  # TODO Find actual threshold
+    total_used_cpu_running_threshold = 9  # TODO Find actual threshold
     process_age_limit = 2  # TODO Find process age limit
     Succesful_Test_Start = {"message": "Swarming started", "success": True}
-    Max_Connection_Time = 3
+    Max_Connection_Time = 2.5
     CPU_Measure_Interval = .2
     Locust_Boot_Time = 2.5  # TODO Find actual timing
     Max_Process_Wait_Time = 5
+    Run_From_UI_Delay = 2
 
     # TODO: make a method to ensure the class is not running any proccesses from last run
 
@@ -180,35 +188,57 @@ class LoadRunner:
                 raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL could not be accessed")
             elif json.loads(response.content) != LoadRunner.Succesful_Test_Start:
                 raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
+            else:
+                time.sleep(LoadRunner.Run_From_UI_Delay)
 
-    def check_ui_slave_count(self):
-        response = self.__request_ui("get", extension="/stats/requests")
-        if response.status_code is not 200:
-            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI could not be accessed")
-        site_data = json.loads(response.content)
-        try:
-            slaves_count = len(site_data["slaves"])
-        except KeyError as e:
-            slaves_count = 0
-        if self.expected_slaves is not slaves_count:
-            raise Load_Test.exceptions.SlaveInitilizationException("All of the slaves where not loaded correctly")
 
-    def test_currently_running(self):
+
+    def grab_ui_request_info_stats(self):
+        response = self.__request_ui("get", extension="/stats/requests/csv")
+        return self.__response_to_pandas(response)
+
+
+    def grab_ui_request_distribution_stats(self):
+        response = self.__request_ui("get", extension="/stats/distribution/csv")
+        return self.__response_to_pandas(response)
+
+    def grab_ui_exception_info(self):
+        response = self.__request_ui("get", extension="/exceptions/csv")
+        return self.__response_to_pandas(response)
+
+
+
+    def is_running(self):
 
         children = self.children
         if not children:
             return False
-        if self.no_web is True and children:
+        elif self.no_web is True:
             return True
-        # open_files = sum([len(child.open_files()) for child in children])
-        # open_fd = sum([child.num_fds() for chlid in children])
-        #
-        usage = sum([child.cpu_percent(LoadRunner.CPU_Measure_Interval) for child in children])
+        else:
+            state = self._ui_state()
+            if state == "running" or state == "hatching":
+                return True
+            else:
+                return False
 
-        if usage / len(children) <= LoadRunner.per_process_used_cpu_running_threshold:
+    def is_setup(self):
+        children = self.children
+        if not children:
+            return False
+        elif self.no_web is True:
+            if len(self.children) is not self.expected_slaves + 1:
+                raise SlaveInitilizationException("All of the slaves where not loaded correctly")
             return False
         else:
-            return True
+
+            state = self._ui_state()
+            if state == "ready":# or state =="stopped":#TODO: if stopped
+                self._check_ui_slave_count()
+                return True
+            else:
+                return False
+
 
     def stop_test(self):
         try:
@@ -420,9 +450,36 @@ class LoadRunner:
 
         return shlex.split(undis_arg_string)
 
+    def _ui_state(self):
+        site_data = self.__ui_info(headers={'Cache-Control': 'no-cache'})
+        return site_data["state"]
+
+
+    def _check_ui_slave_count(self):
+        site_data = self.__ui_info()
+        try:
+            slaves_count = len(site_data["slaves"])
+        except KeyError as e:
+            slaves_count = 0
+        if self.expected_slaves is not slaves_count:
+            raise Load_Test.exceptions.SlaveInitilizationException("All of the slaves where not loaded correctly")
+
+
+
     def _wait_for_locust_process_upboot(self):
         while time.time() - min([child.create_time() for child in self.children]) < LoadRunner.Locust_Boot_Time:
             time.sleep(.1)
+
+
+    def __response_to_pandas(self, response):
+        if response.status_code is not 200:
+            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI could not be accessed")
+        else:
+            io_string = StringIO(response.content)
+            df = pd.read_csv(io_string, sep=",")
+            return df
+
+
 
     def __set_virtual_env(self):
         activate_virtual_env_path = "bin/activate_this.py"
@@ -435,6 +492,14 @@ class LoadRunner:
             execfile(path, dict(__file__=path))
         else:
             raise Exception("Could not find virutal env")
+
+
+    def __ui_info(self, **kwargs):
+        response = self.__request_ui("get", extension="/stats/requests", **kwargs)
+        if response.status_code is not 200:
+            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI could not be accessed")
+        site_data = json.loads(response.content)
+        return site_data
 
     @backoff.on_exception(backoff.expo,
                           ConnectionError,
@@ -453,5 +518,7 @@ class LoadRunner:
             host = host + extension if extension is not None else host
         response = requests.request(request, host, **kwargs)
         return response
+
+
 
 

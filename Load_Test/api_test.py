@@ -23,7 +23,7 @@ class APITest(TestCase):
         self.PoolFactory = RequestPoolFactory(self.config, envs={"DEV2"})
         self.dev2_host = self.config.get_api_host("DEV2")
         self.ran_inner_setup = True
-
+        self.min_requests = 300
         # THESE STATS ARE USED WHEN RUNNING THE LOAD RUNNER
         # connection options
         self.version = 4  # The version is explicitly specified on most tests
@@ -54,10 +54,13 @@ class APITest(TestCase):
             pass
         self.load_runner.stop_test()
 
-    def _test_undistributed(self, route, version, web, assert_results=True):
+    def _test_undistributed(self, route, version, web, assert_results=True, api_call_weight=None):
         self.__empty_test_stats_folder()
         self.assertEqual(os.listdir(APITest.test_stats_folder), [], "The test_stats folder did not start empty")
-        api_call_weight = {route: 1}
+        if api_call_weight is not None:
+            api_call_weight=api_call_weight
+        else:
+            api_call_weight = {route: 1}
         if web:
             self.load_runner.run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
                                              stats_file_name="test", stats_folder=APITest.test_stats_folder,
@@ -86,7 +89,7 @@ class APITest(TestCase):
         if web:
             self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
                                             stats_file_name="test", stats_folder=APITest.test_stats_folder)
-            self.load_runner.check_ui_slave_count()
+            self.load_runner._check_ui_slave_count()
             self.load_runner.run_from_ui(self.n_clients, self.hatch_rate)
             time.sleep(15)
         else:
@@ -115,7 +118,8 @@ class APITest(TestCase):
         loaded_r_file = pandas.read_csv(requests_file, delimiter=',', quotechar='"', index_col=False)
         if assert_results:
             self.assertEqual(loaded_r_file["# failures"].tail(1).values[0], 0, "There were more than 0 failures")
-            self.assertGreaterEqual(loaded_r_file["# requests"].tail(1).values[0], 400,
+            self.assertNotEqual(loaded_r_file["# requests"].tail(1).values[0], 0, "No requests where sent out")
+            self.assertGreaterEqual(loaded_r_file["# requests"].tail(1).values[0], self.min_requests,
                                     "There were not enough requests sent out")
 
     def __empty_test_stats_folder(self):

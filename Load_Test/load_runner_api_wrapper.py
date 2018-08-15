@@ -61,35 +61,44 @@ class LoadRunnerAPIWrapper:
         return self._test_runner.no_web
 
     def is_running(self):
-        is_running = False
-        test_type = None
-        if self._test_runner.test_currently_running():
-            is_running = True
+        try:
+            is_running = self._test_runner.is_running()
+            if not is_running:
+                test_type = None
+                return is_running, test_type
             if self.no_web:
                 test_type = self.Current_Benchmark_Test_Msg
             else:
                 test_type = self.Current_Manuel_Test_Msg
-
-        return (is_running, test_type)
+        except(LocustUIUnaccessible, ConnectionError, SlaveInitilizationException):
+            is_running = False
+            test_type = None
+            return is_running, test_type
+        else:
+            return is_running, test_type
 
     def is_setup(self):
-        is_setup = True
-        test_type = None
-        is_running, running_test_type = self.is_running()
+        is_running, type = self.is_running()
         if is_running:
-            return False, running_test_type
+            is_setup = False
+            test_type = type
+            return is_setup, test_type
         try:
+            is_setup = self._test_runner.is_setup()
+            if not is_setup:
+                test_type = None
+                return is_setup, test_type
+            if not is_setup:
+                return is_setup, None
             if self.no_web:
-                if len(self._test_runner.children) is not self._test_runner.expected_slaves + 1:
-                    raise SlaveInitilizationException("All of the slaves where not loaded correctly")
                 test_type = self.Setup_Benchmark_Test_Msg
             else:
-                self._test_runner.check_ui_slave_count()
                 test_type = self.Setup_Manuel_Test_Msg
         except (SlaveInitilizationException, LocustUIUnaccessible, ConnectionError) as e:
             is_setup = False
             test_type = None
-        finally:
+            return is_setup, test_type
+        else:
             return is_setup, test_type
 
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
