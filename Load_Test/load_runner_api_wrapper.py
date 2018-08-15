@@ -3,7 +3,7 @@ from Load_Test.exceptions import (TestAlreadyRunning, InvalidAPIRoute, InvalidAP
                                   InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, LostTestRunnerAPIObject)
 from Load_Test.config import Config
 from Load_Test.load_runner import LoadRunner
-
+import time
 import os
 
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +27,7 @@ class LoadRunnerAPIWrapper:
     Setup_Manuel_Test_Msg = u"A manuel test is setup on this server - view/run it through the UI"
     TEST_API_WRAPPER = None
     Extension = '/LoadServer'
+
 
     @classmethod
     def setup(cls):
@@ -130,6 +131,7 @@ class LoadRunnerAPIWrapper:
                                          run_time=run_time, reset_stats=reset_stats)
 
     def start_manuel_from_ui(self, locust_count, hatch_rate):
+        time.sleep(LoadRunner.Run_From_UI_Delay)
         self.__raise_if_running()
         self._test_runner.run_from_ui(locust_count, hatch_rate)
 

@@ -178,6 +178,7 @@ class LoadRunner:
         self._wait_for_locust_process_upboot()
 
     def run_from_ui(self, locust_count, hatch_rate):
+
         json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
         try:
             response = self.__request_ui("post", extension="/swarm", data=json_params)
@@ -188,8 +189,8 @@ class LoadRunner:
                 raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL could not be accessed")
             elif json.loads(response.content) != LoadRunner.Succesful_Test_Start:
                 raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
-            else:
-                time.sleep(LoadRunner.Run_From_UI_Delay)
+
+
 
 
 
