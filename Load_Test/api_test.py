@@ -7,8 +7,8 @@ import time
 
 class APITest(TestCase):
     LOAD_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-    TEST_DIR = os.path.join(LOAD_TEST_DIR, "test/")
-    test_stats_folder = os.path.join(TEST_DIR, "test_stats/")
+    TEST_DIR = os.path.join(LOAD_TEST_DIR, "test")
+    test_stats_folder = os.path.join(TEST_DIR, "test_stats")
     SLAVE_LOCUST_FILE = os.path.join(LOAD_TEST_DIR, "api_locust.py")
     MASTER_LOCUST_FILE = os.path.join(LOAD_TEST_DIR, "master_locust.py")
 
@@ -74,6 +74,7 @@ class APITest(TestCase):
                                              hatch_rate=self.hatch_rate, run_time=self.time,
                                              stats_folder=APITest.test_stats_folder)
             info_list, return_code_list = self.load_runner.stop_test()
+            print(info_list)
             for index in range(len(info_list)):
                 self.assertEqual(0, return_code_list[index], str(info_list[index]))
         self.__check_test_stats_folder(assert_results)

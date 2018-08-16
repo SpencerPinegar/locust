@@ -83,6 +83,12 @@ class APITasks(TaskSet):
         locust.client.post(APITasks.lr_url, json=json_data)
 
 
+
+    def _nothing(self):
+        assert 2 + 2 == 4
+        pass
+
+
     def _redundant_ts_segment(locust):
         ts_url, ts_content_hash = random.choice(APITasks.ts_segment_urls)
         ts_prefix = ts_url.split("//")[1][0].lower()
@@ -100,11 +106,27 @@ class APITasks(TaskSet):
                 else:
                     response.success()
 
+    def _basic_network(locust):
+        call_name = APITasks.__get_labeled_name("Basic Network Test")
+        locust.client.post(APITasks.basic_network_url, name=call_name)
+
+
+    def _network_byte_size(locust):
+        payload = {"byte_size": "3"} #TODO Make this configurable - ideally by allowing params to be passed in with api_call_weight
+        call_name = APITasks.__get_labeled_name("Byte Size Network Test")
+        locust.client.post(APITasks.network_byte_size_url,  name=call_name, json=payload)
+
+    def _small_db(locust):
+        call_name = APITasks.__get_labeled_name("Small Data Base Query Network Test")
+        locust.client.post(APITasks.small_db_url, name=call_name)
+
+    def _large_db(locust):
+        call_name = APITasks.__get_labeled_name("Large Data Base Query Network Test")
+        locust.client.post(APITasks.large_db_url, name=call_name)
+
         #APITasks._get_and_validate_ts_segment(locust, ts_url, ts_content_hash)
 
-    def _nothing(self):
-        assert 2 + 2 == 4
-        pass
+
 
 
 
@@ -121,9 +143,14 @@ class APITasks(TaskSet):
         "Update Rules": _update_user_rules,
         "List Rules": _list_user_rules,
 
-
-        "Redundant Ts Segment": _redundant_ts_segment,
         "Nothing": _nothing,
+        "Redundant Ts Segment": _redundant_ts_segment,
+        "Basic Network": _basic_network,
+        "Network Byte Size": _network_byte_size,
+        "Small Data Base": _small_db,
+        "Large Data Base": _large_db,
+
+
     }#TODO: FIND WAY TO MAKE VALID API ROUTES
 
 
@@ -153,7 +180,9 @@ class APITasks(TaskSet):
         normal_max = env_wrapper.get("N_MAX")
         stat_interval = env_wrapper.get("STAT_INTERVAL")
         locust.stats.CSV_STATS_INTERVAL_SEC = stat_interval
-        pool_factory = RequestPoolFactory(Config(), [cls.env])
+        config = Config()
+        pool_factory = RequestPoolFactory(config, [cls.env])
+        api_base_host = config.get_api_host(cls.env)
 
         cls._set_tasks()
         for api_call in cls.api_call_weight.keys():
@@ -201,13 +230,31 @@ class APITasks(TaskSet):
                 cls.list_rules_pool, cls.lr_url = pool_factory.get_list_rules_pool_and_route(cls.version, cls.env, normal_min, normal_max)
                 logger.debug("Set up {0} Info".format(api_call))
 
+
             elif api_call == "Nothing":
                 logger.debug("Set up {0} Info".format(api_call))
+
 
             elif api_call == "Redundant Ts Segment":
                 cls.ts_segment_urls = pool_factory.get_redundant_ts_segment_urls(cls.env, normal_min)
                 logger.debug("Set up {0} Info".format(api_call))
 
+            elif api_call == "Basic Network":
+                cls.basic_network_url = "{host}/rec/test/vip-test/".format(host = api_base_host)
+                logger.debug("Set up {0} Info".format(api_call))
+
+            elif api_call == "Network Byte Size":
+
+                cls.network_byte_size_url = "{host}/rec/test/byte-size-test/".format(host=api_base_host)
+                logger.debug("Set up {0} Info".format(api_call))
+
+            elif api_call == "Small Data Base":
+                cls.small_db_url = "{host}/rec/test/small-db-test/".format(host=api_base_host)
+                logger.debug("Set up {0} Info".format(api_call))
+
+            elif api_call == "Large Data Base":
+                cls.large_db_url = "{host}/rec/test/big-db-test/".format(host=api_base_host)
+                logger.debug("Set up {0} Info".format(api_call))
 
             else:
                 logger.error("{0} is not a valid API call - valid api calls {1}".format(api_call, APITasks._task_method_realtion.keys()))
@@ -240,7 +287,7 @@ class APITasks(TaskSet):
         """
 
         header = {"Content-Type": "application/json", "Connection": "close"}
-        call_name = "{env}-{node}--{route}".format(env=APITasks.env, node=APITasks.node, route=url)
+        call_name = APITasks.__get_labeled_name(url)
 
         with locust.client.request("POST", url, name=call_name, catch_response=True, data=json.dumps(json_info), headers=header) as response:
             try:
@@ -274,7 +321,10 @@ class APITasks(TaskSet):
 
 
 
-
+    @staticmethod
+    def __get_labeled_name(name):
+        call_name = "{env}:{node}  -  {route}".format(env=APITasks.env, node=APITasks.node, route=name)
+        return call_name
 
 class APIUser(HttpLocust):
     """

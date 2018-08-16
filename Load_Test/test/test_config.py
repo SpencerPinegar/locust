@@ -17,7 +17,7 @@ class TestConfig(APITest):
         self.expected_routes_params = {"Route", "Versions", "Normal Min", "Normal Max", "Version 1", "List"}
         self.expected_api_env_params = {"VIP Host", "Node Host", "Total Nodes"}
         self.expected_api_base = {"Environments", "Routes", "Misc Tests"}
-        self.expected_misc_tests = {"Nothing", "Redundant Ts Segment"}
+        self.expected_misc_tests = {"Nothing", "Redundant Ts Segment", "Basic Network", "Network Byte Size", "Small DB", "Large DB"}
 
 
 

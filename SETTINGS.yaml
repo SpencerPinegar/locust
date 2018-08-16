@@ -313,6 +313,11 @@ RecAPI Settings:
   Misc Tests:
     - Nothing
     - Redundant Ts Segment
+    - Basic Network
+    - Network Byte Size
+    - Small DB
+    - Large DB
+
 
 
 

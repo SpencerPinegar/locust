@@ -34,11 +34,26 @@ class TestAPILocust(APITest):
     def test_list_rules_v1(self):
         self._test_undistributed("List Rules", 1, False)
 
+    def test_do_nothing_cpu_used(self):
+        self._test_undistributed("Nothing", 1, False, assert_results=False)
+
     def test_redundant_ts_segment(self):
         self._test_undistributed("Redundant Ts Segment", 1, False)
 
-    def test_do_nothing_cpu_used(self):
-        self._test_undistributed("Nothing", 1, False, assert_results=False)
+    def test_basic_network(self):
+        self._test_undistributed("Basic Network", 1, False)
+
+    def test_network_byte_size(self):
+        self._test_undistributed("Network Byte Size", 1, False)
+
+    def test_small_db(self):
+        self._test_undistributed("Small Data Base", 1, False)
+
+    def test_large_db(self):
+        self._test_undistributed("Large Data Base", 1, False)
+
+
+
 
     def test_2_routes_one_zero_weight(self):
         api_call_weight = {"User Recordings Ribbon": 1, "User Franchise Ribbon": 0}
