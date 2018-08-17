@@ -1,5 +1,5 @@
 from Load_Test.api_test import APITest
-
+from Load_Test.api_locust import APITasks
 
 class TestAPILocust(APITest):
 
@@ -57,11 +57,20 @@ class TestAPILocust(APITest):
 
     def test_2_routes_one_zero_weight(self):
         api_call_weight = {"User Recordings Ribbon": 1, "User Franchise Ribbon": 0}
-        self._test_undistributed("DOESNT MATTER", 1, False, api_call_weight=api_call_weight)
+        self._test_undistributed("DOESNT MATTER", 1, False, api_call_weight=api_call_weight, test_time="1m")
 
     def test_2_routes_both_weight(self):
+        api_call_weight = {"User Franchise Ribbon": 10, "User Recordings Ribbon": 10}
+        self._test_undistributed("DOESNT MATTER", 1, False, api_call_weight=api_call_weight, test_time="1m")
+
+
+    def test_set_tasks(self):
         api_call_weight = {"User Recordings Ribbon": 1, "User Franchise Ribbon": 1}
-        self._test_undistributed("DOESNT MATTER", 1, False, api_call_weight=api_call_weight)
+        APITasks.api_call_weight = api_call_weight
+        APITasks._set_tasks()
+
+        print("huh")
+
 
 
 

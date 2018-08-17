@@ -90,4 +90,14 @@ class NeedExtensionArgument(Exception):
     """
     This Exception is raised when someone attempts to start a flask webapp without an extension
     """
+    pass
+
+class WebOperationNoWebTest(Exception):
+    """
+    This Exception is raised when someone attempts to interact with the UI on no web test
+    """
+    pass
+
+
+
 

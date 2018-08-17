@@ -23,7 +23,7 @@ class APITest(TestCase):
         self.PoolFactory = RequestPoolFactory(self.config, envs={"DEV2"})
         self.dev2_host = self.config.get_api_host("DEV2")
         self.ran_inner_setup = True
-        self.min_requests = 300
+        self.min_requests = 100
         # THESE STATS ARE USED WHEN RUNNING THE LOAD RUNNER
         # connection options
         self.version = 4  # The version is explicitly specified on most tests
@@ -52,28 +52,28 @@ class APITest(TestCase):
             self.PoolFactory.close()
         except:
             pass
-        self.load_runner.stop_test()
+        self.load_runner._kill_test()
 
-    def _test_undistributed(self, route, version, web, assert_results=True, api_call_weight=None):
+    def _test_undistributed(self, route, version, web, assert_results=True, api_call_weight=None, test_time=None):
         self.__empty_test_stats_folder()
         self.assertEqual(os.listdir(APITest.test_stats_folder), [], "The test_stats folder did not start empty")
-        if api_call_weight is not None:
-            api_call_weight=api_call_weight
-        else:
-            api_call_weight = {route: 1}
+        test_time = test_time if test_time is not None else self.time
+        api_call_weight = api_call_weight if api_call_weight is not None else {route: 1}
         if web:
-            self.load_runner.run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
-                                             stats_file_name="test", stats_folder=APITest.test_stats_folder,
-                                             )
-            self.load_runner.run_from_ui(self.n_clients, self.hatch_rate)
-            time.sleep(15)
+            self.load_runner._run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
+                                              stats_file_name="test", stats_folder=APITest.test_stats_folder,
+                                              )
+            self.load_runner._start_ui_load(self.n_clients, self.hatch_rate)
+            time.sleep(5)
+
         else:
-            self.load_runner.run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
-                                             stats_file_name="test",
-                                             no_web=True, reset_stats=True, num_clients=self.n_clients,
-                                             hatch_rate=self.hatch_rate, run_time=self.time,
-                                             stats_folder=APITest.test_stats_folder)
-            info_list, return_code_list = self.load_runner.stop_test()
+            self.load_runner._run_single_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
+                                              stats_file_name="test",
+                                              no_web=True, reset_stats=True, num_clients=self.n_clients,
+                                              hatch_rate=self.hatch_rate, run_time=test_time,
+                                              stats_folder=APITest.test_stats_folder)
+            time.sleep(5)
+            info_list, return_code_list = self.load_runner._kill_test()
             print(info_list)
             for index in range(len(info_list)):
                 self.assertEqual(0, return_code_list[index], str(info_list[index]))
@@ -88,17 +88,19 @@ class APITest(TestCase):
         self.assertEqual(os.listdir(APITest.test_stats_folder), [], "The test_stats folder did not start empty")
         api_call_weight = {route: 1}
         if web:
-            self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
-                                            stats_file_name="test", stats_folder=APITest.test_stats_folder)
-            self.load_runner._check_ui_slave_count()
-            self.load_runner.run_from_ui(self.n_clients, self.hatch_rate)
-            time.sleep(15)
+            self.load_runner._run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
+                                             stats_file_name="test", stats_folder=APITest.test_stats_folder)
+            self.assertEqual(True, self.load_runner.slaves_loaded, "not all the slaves loaded correctly")
+            self.load_runner._start_ui_load(self.n_clients, self.hatch_rate)
+            time.sleep(5)
         else:
-            self.load_runner.run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
-                                            stats_file_name="test", stats_folder=APITest.test_stats_folder,
-                                            no_web=True, reset_stats=True, num_clients=self.n_clients,
-                                            hatch_rate=self.hatch_rate, run_time=self.time)
-            info_list, return_code_list = self.load_runner.stop_test()
+            self.load_runner._run_multi_core(api_call_weight, self.env, self.node, version, self.n_min, self.n_max,
+                                             stats_file_name="test", stats_folder=APITest.test_stats_folder,
+                                             no_web=True, reset_stats=True, num_clients=self.n_clients,
+                                             hatch_rate=self.hatch_rate, run_time=self.time)
+            time.sleep(5)
+            info_list, return_code_list = self.load_runner._kill_test()
+            print(info_list)
             for index in range(len(info_list)):
                 self.assertEqual(0, return_code_list[index], str(info_list[index]))
         self.__check_test_stats_folder(assert_results)

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 
-from locust import HttpLocust, TaskSet
+from locust import HttpLocust, TaskSet, task
 import locust.stats
 from requests.exceptions import RequestException
 
@@ -32,8 +32,8 @@ class APITasks(TaskSet):
     def setup(self):
         APITasks.setup_based_on_env_vars()
 
-
     def _user_recordings_ribbon(locust):
+
         json_data = APITasks.user_recordings_pool.get_json()
         APITasks.post_json_csm_copy(locust, json_data, APITasks.urr_url)
 
@@ -83,7 +83,6 @@ class APITasks(TaskSet):
         locust.client.post(APITasks.lr_url, json=json_data)
 
 
-
     def _nothing(self):
         assert 2 + 2 == 4
         pass
@@ -115,6 +114,7 @@ class APITasks(TaskSet):
         payload = {"byte_size": "3"} #TODO Make this configurable - ideally by allowing params to be passed in with api_call_weight
         call_name = APITasks.__get_labeled_name("Byte Size Network Test")
         locust.client.post(APITasks.network_byte_size_url,  name=call_name, json=payload)
+
 
     def _small_db(locust):
         call_name = APITasks.__get_labeled_name("Small Data Base Query Network Test")
@@ -267,16 +267,19 @@ class APITasks(TaskSet):
             api_call = api_call.title()
             if api_call not in APITasks._task_method_realtion.keys():
                 logger.error("{0} is not a valid api call".format(api_call))
-            for add_task_count in range(cls.api_call_weight[api_call]):
-                tasks_to_be.append(APITasks._task_method_realtion[api_call])
+            api_call_weight = cls.api_call_weight[api_call]
+            if api_call_weight == 0:
+                continue
+            api_call_method = cls._task_method_realtion[api_call]
+            for _ in range(api_call_weight):
+                tasks_to_be.append(api_call_method)
         cls.tasks = tasks_to_be
+
         logger.debug("tasks set to {0}".format(tasks_to_be))
 
 
-
-
     @staticmethod
-    def post_json_csm_copy(locust, json_info, url):
+    def post_json_csm_copy(locust, json_info, url, name=None):
         """
         This function assumes that all requests must be under the designated max response time, close after,
         and that the resposne code must be 200
@@ -287,37 +290,8 @@ class APITasks(TaskSet):
         """
 
         header = {"Content-Type": "application/json", "Connection": "close"}
-        call_name = APITasks.__get_labeled_name(url)
-
-        with locust.client.request("POST", url, name=call_name, catch_response=True, data=json.dumps(json_info), headers=header) as response:
-            try:
-                response.raise_for_status()
-            except RequestException as e:
-                response.failure(e)
-            if response.locust_request_meta["response_time"] < APITasks.BENCHMARK:
-                response.locust_request_meta["name"] = "0 PASS < {time}ms: {name}".format(
-                    name=response.locust_request_meta["name"], time=APITasks.BENCHMARK)
-                response.success()
-            elif response.locust_request_meta["response_time"] < APITasks.SLOW:
-                response.locust_request_meta["name"] = "1 SLOW {below}ms -- {above}ms: {name}".format(
-                    name=response.locust_request_meta["name"], below=APITasks.BENCHMARK, above=APITasks.SLOW)
-                response.success()
-            elif response.locust_request_meta["response_time"] < APITasks.VERY_SLOW:
-                response.locust_request_meta["name"] = "2 VERY SLOW {below}ms -- {above}ms: {name}".format(
-                    name=response.locust_request_meta["name"], below=APITasks.SLOW, above=APITasks.VERY_SLOW)
-                response.success()
-            elif response.locust_request_meta["response_time"] < APITasks.USER_WAITING:
-                response.locust_request_meta["name"] = "3 USER WAIT {below}ms -- {above}ms: {name}".format(
-                    name=response.locust_request_meta["name"], below=APITasks.VERY_SLOW, above=APITasks.USER_WAITING)
-                response.success()
-            elif response.locust_request_meta["response_time"] < APITasks.CMS_TIMEOUT:
-                response.locust_request_meta["name"] = "4 LONG USER WAIT {below}ms -- {above}ms: {name}".format(
-                    name=response.locust_request_meta["name"], below=APITasks.USER_WAITING, above=APITasks.CMS_TIMEOUT)
-                response.success()
-            else:
-                response.locust_request_meta["name"] = "5 TIMEOUT >{timeout}ms: {name}".format(
-                    name=response.locust_request_meta["name"], timeout=APITasks.CMS_TIMEOUT)
-                response.success()
+        call_name = APITasks.__get_labeled_name(url) if name is None else APITasks.__get_labeled_name(name)
+        locust.client.request("POST", url, name=call_name, data=json.dumps(json_info), headers=header)
 
 
 

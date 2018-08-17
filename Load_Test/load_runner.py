@@ -6,6 +6,7 @@ if sys.version_info[0] < 3:
 else:
     from io import StringIO
 
+
 import Load_Test.exceptions
 import pandas as pd
 import psutil
@@ -19,7 +20,8 @@ import time
 import requests
 from requests.exceptions import ConnectionError
 import backoff
-from Load_Test.exceptions import SlaveInitilizationException
+from Load_Test.exceptions import (SlaveInitilizationException, WebOperationNoWebTest, InvalidAPIRoute, InvalidAPIEnv,
+                                  InvalidAPIVersion, InvalidAPINode)
 
 
 from Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
@@ -53,11 +55,12 @@ class LoadRunner:
     total_used_cpu_running_threshold = 9  # TODO Find actual threshold
     process_age_limit = 2  # TODO Find process age limit
     Succesful_Test_Start = {"message": "Swarming started", "success": True}
+    Succesful_Test_Stop = { "message": "Test stopped", "success": True}
     Max_Connection_Time = 2.5
     CPU_Measure_Interval = .2
-    Locust_Boot_Time = 2.5  # TODO Find actual timing
+    Boot_Time_Delay = 2.5  # TODO Find actual timing
     Max_Process_Wait_Time = 5
-    Run_From_UI_Delay = 2
+    UI_Action_Delay = 2
 
     # TODO: make a method to ensure the class is not running any proccesses from last run
 
@@ -73,6 +76,36 @@ class LoadRunner:
         self.expected_slaves = 0
         self.__set_virtual_env()
         self._default_2_cores = False
+        self._last_write_acton = time.time()
+        self._last_boot_time = time.time()
+
+
+
+    @property
+    def last_boot(self):
+        return self._last_boot_time
+
+    @last_boot.setter
+    def last_boot(self, value):
+        max([child.create_time() for child in self.children])
+
+    @property
+    def last_write(self):
+        return self._last_write_acton
+
+    @last_write.setter
+    def last_write(self, value):
+        self._last_write_acton = time.time()
+
+
+    @property
+    def slaves_loaded(self):
+        try:
+            self.__assert_slave_count()
+            return True
+        except SlaveInitilizationException as e:
+            return False
+
 
     @property
     def master(self):
@@ -118,11 +151,11 @@ class LoadRunner:
 
     @property
     def children(self):
-        return self._child_processes()
+        return self.__child_processes()
 
     @property
     def cores(self):
-        return self._avaliable_cpu_count()
+        return self.__avaliable_cpu_count()
 
     @property
     def default_2_cores(self):
@@ -132,12 +165,50 @@ class LoadRunner:
     def default_2_cores(self, value):
         self._default_2_cores = value
 
-    def run_multi_core(self, api_call_weight, env, node, version, n_min, n_max,
-                       stats_file_name=None, log_level=None, log_file_name=None, no_web=False,
-                       reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
-                       stats_folder=None, log_folder=None):
+#### Server Write Commands
+
+
+    def _start_ui_load(self, locust_count, hatch_rate):
+        json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
+        response = self.__request_ui("post", extension="/swarm", data=json_params)
+        if json.loads(response.content) != LoadRunner.Succesful_Test_Start:
+            raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
+        self.last_write = time.time()
+
+
+
+    def _stop_ui_test(self):
+        self.__post_action_wait()
+        response = self.__request_ui("get", extension="/stop")
+        if json.loads(response.content) != LoadRunner.Succesful_Test_Stop:
+            raise Load_Test.exceptions.FailedToStartLocustUI("The /stop loocust URL was accessed but the test was not properly stopped")
+        self.last_write = time.time()
+
+
+    def _reset_stats(self):
+        response = self.__request_ui("get", extension="/stats/reset")
+        self.last_write = time.time()
+
+
+
+#### Server Uitility Commands
+    def _kill_test(self):
+        try:
+            if self.no_web:
+                info_list, return_codes = self.__fresh_state(True)
+            else:
+                info_list, return_codes = self.__fresh_state(False)
+            return info_list, return_codes
+        except:
+            raise
+
+
+    def _run_multi_core(self, api_call_weight, env, node, version, n_min, n_max,
+                        stats_file_name=None, log_level=None, log_file_name=None, no_web=False,
+                        reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
+                        stats_folder=None, log_folder=None):
         self.no_web = no_web
-        available_cores = self._avaliable_cpu_count()
+        available_cores = self.__avaliable_cpu_count()
         if self.default_2_cores:
             available_cores = 2
         if available_cores <= 1:
@@ -146,71 +217,41 @@ class LoadRunner:
                     cores=available_cores))  # TO RUN MULTICORE WE NEED MORE THAN ONE CORE
 
         self.expected_slaves = available_cores - 1
-        os_env = self._get_configured_env(api_call_weight, env, version, node, n_min, n_max)
-        stats_file_name, log_file_name = self._get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
+        os_env = self.__get_configured_env(api_call_weight, env, version, node, n_min, n_max)
+        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
 
-        master_options = self._create_master_options(env, node, stats_file_name, log_level, log_file_name, no_web,
-                                                     reset_stats,
-                                                     self.expected_slaves, num_clients, hatch_rate, run_time)
-        slave_options = self._create_slave_options(env, node, reset_stats)
+        master_options = self.__create_master_options(env, node, stats_file_name, log_level, log_file_name, no_web,
+                                                      reset_stats,
+                                                      self.expected_slaves, num_clients, hatch_rate, run_time)
+        slave_options = self.__create_slave_options(env, node, reset_stats)
 
-        self.master = self._create_process(os_env.get_env(), master_options)
+        self.master = self.__create_process(os_env.get_env(), master_options)
 
         to_be_slaves = []
         for index in range(self.expected_slaves):
-            slave = self._create_process(os_env.get_env(), slave_options)
+            slave = self.__create_process(os_env.get_env(), slave_options)
             to_be_slaves.append(slave)
         self.slaves = to_be_slaves
-        self._wait_for_locust_process_upboot()
+        self.last_boot = time.time()
 
-    def run_single_core(self, api_call_weight, env, node, version, n_min, n_max, stats_file_name=None, log_level=None,
-                        log_file_name=None,
-                        no_web=False, reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
-                        stats_folder=None, log_folder=None):
+    def _run_single_core(self, api_call_weight, env, node, version, n_min, n_max, stats_file_name=None, log_level=None,
+                         log_file_name=None,
+                         no_web=False, reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
+                         stats_folder=None, log_folder=None):
         self.no_web = no_web
-        stats_file_name, log_file_name = self._get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
-        os_env = self._get_configured_env(api_call_weight, env, version, node, n_min, n_max)
+        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
+        os_env = self.__get_configured_env(api_call_weight, env, version, node, n_min, n_max)
 
-        undis_options = self._create_undistributed_options(env, node, stats_file_name, log_level, log_file_name, no_web,
-                                                           reset_stats,
-                                                           num_clients, hatch_rate, run_time)
-        self.master = self._create_process(os_env.get_env(), undis_options)
-        self._wait_for_locust_process_upboot()
-
-    def run_from_ui(self, locust_count, hatch_rate):
-
-        json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
-        try:
-            response = self.__request_ui("post", extension="/swarm", data=json_params)
-        except ConnectionError as e:
-            raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL could not be accessed")
-        else:
-            if response.status_code is not 200:
-                raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL could not be accessed")
-            elif json.loads(response.content) != LoadRunner.Succesful_Test_Start:
-                raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
+        undis_options = self.__create_undistributed_options(env, node, stats_file_name, log_level, log_file_name, no_web,
+                                                            reset_stats,
+                                                            num_clients, hatch_rate, run_time)
+        self.master = self.__create_process(os_env.get_env(), undis_options)
+        self.last_boot = time.time()
 
 
+    def _is_running(self):
 
-
-
-    def grab_ui_request_info_stats(self):
-        response = self.__request_ui("get", extension="/stats/requests/csv")
-        return self.__response_to_pandas(response)
-
-
-    def grab_ui_request_distribution_stats(self):
-        response = self.__request_ui("get", extension="/stats/distribution/csv")
-        return self.__response_to_pandas(response)
-
-    def grab_ui_exception_info(self):
-        response = self.__request_ui("get", extension="/exceptions/csv")
-        return self.__response_to_pandas(response)
-
-
-
-    def is_running(self):
-
+        self.__post_action_wait()
         children = self.children
         if not children:
             return False
@@ -223,7 +264,8 @@ class LoadRunner:
             else:
                 return False
 
-    def is_setup(self):
+    def _is_setup(self):
+        self.__post_action_wait()
         children = self.children
         if not children:
             return False
@@ -235,38 +277,94 @@ class LoadRunner:
 
             state = self._ui_state()
             if state == "ready":# or state =="stopped":#TODO: if stopped
-                self._check_ui_slave_count()
+                self.__assert_slave_count()
                 return True
             else:
                 return False
 
 
-    def stop_test(self):
+#### SERVER READ COMMANDS
+    def _get_ui_info(self, **kwargs):
+        self.__post_action_wait()
+        response = self.__request_ui("get", extension="/stats/requests", **kwargs)
+        site_data = json.loads(response.content)
+        ui_info = {}
+        ui_info.setdefault("errors", site_data["errors"])
+        ui_info.setdefault("fail_ratio", site_data["fail_ratio"])
+        ui_info.setdefault("user_count", site_data["user_count"])
+        ui_info.setdefault("state", site_data["state"])
         try:
-            if self.no_web:
-                info_list, return_codes = self.__fresh_state(True)
-            else:
-                info_list, return_codes = self.__fresh_state(False)
-            return info_list, return_codes
-        except:
-            raise
+            slaves_count = len(site_data["slaves"])
+        except KeyError as e:
+            slaves_count = 0
+        ui_info.setdefault("slaves", slaves_count)
+        for url in site_data["stats"]:
+            name = url["name"]
+            ui_info.setdefault(name, { "avg_content_length": url["avg_content_length"],
+                                       "rps": url["current_rps"],
+                                       "failures": url["num_failures"],
+                                       "requests": url["num_requests"]
+                                       }
+                               )
+        return ui_info
 
+    def _ui_state(self):
+        self.__post_action_wait()
+        site_data = self._get_ui_info(headers={'Cache-Control': 'no-cache'})
+        return site_data["state"]
+
+
+    def _get_ui_request_distribution_stats(self):
+        self.__post_action_wait()
+        response = self.__request_ui("get", extension="/stats/distribution/csv")
+        df = self.__response_to_pandas(response)
+        json_data = {}
+        for index, row in df.iterrows():
+            name = row["Name"]
+            name = name.replace("POST ", "").replace("GET ", "")
+            num_requests = row["# requests"]
+            p_50 = row["50%"]
+            p_66 = row["66%"]
+            p_75 = row["75%"]
+            p_80 = row["80%"]
+            p_90 = row["90%"]
+            p_98 = row["98%"]
+            p_99 = row["99%"]
+            p_100 = row["100%"]
+            json_data.setdefault(name, {"num requests": num_requests,
+                                        "50%": p_50,
+                                        "66%": p_66,
+                                        "75%": p_75,
+                                        "80%": p_80,
+                                        "90%": p_90,
+                                        "98%": p_98,
+                                        "99%": p_99,
+                                        "100%": p_100
+                                        })
+        return json_data
+
+    def _get_ui_exception_info(self):
+        self.__post_action_wait()
+        response = self.__request_ui("get", extension="/exceptions/csv")
+        df = self.__response_to_pandas(response)
+        return df
+    #####    THESE ARE THE HELPER FUNCTIONS
 
 
     def __fresh_state(self, wait):
         return_info = []
         return_codes = []
         if wait:
-            info, code = self._safe_wait_kill(self.master)
+            info, code = self.__safe_wait_kill(self.master)
         else:
-            info, code = self._safe_kill(self.master)
+            info, code = self.__safe_kill(self.master)
         return_codes.append(code)
         return_info.append(info)
         for slave in self.slaves:
             if wait:
-                info, code = self._safe_wait_kill(slave)
+                info, code = self.__safe_wait_kill(slave)
             else:
-                info, code = self._safe_kill(slave)
+                info, code = self.__safe_kill(slave)
             return_codes.append(code)
             return_info.append(info)
         self.master = None
@@ -277,17 +375,17 @@ class LoadRunner:
         return return_info, return_codes
 
 
-    def _safe_wait_kill(self, process):
+    def __safe_wait_kill(self, process):
         if process is None:
             return "Process was None", -15
         try:
             return_code = process.wait(timeout=LoadRunner.Max_Process_Wait_Time)
             info = self.master.communicate()
         except sp.TimeoutExpired as e:
-            info, return_code = self._safe_kill(process)
+            info, return_code = self.__safe_kill(process)
         return info, return_code
 
-    def _safe_kill(self, process):
+    def __safe_kill(self, process):
         if process is None:
             return "Process was None", -15
         try:
@@ -295,8 +393,6 @@ class LoadRunner:
                 process.kill()
             return_code = 0 if process.poll() == -9 else process.poll()
             info = process.communicate()
-            if None is return_code:
-                print("what")
             return info, return_code
         except OSError as e:
             if e.strerror == "No such process":
@@ -304,7 +400,7 @@ class LoadRunner:
             else:
                 raise e
 
-    def _avaliable_cpu_count(self):
+    def __avaliable_cpu_count(self):
         """
         Takes samples of the system CPU usage to determine how many CPU's must be allocated to current system priceless
         Returns the amount of available physical CPU's that can be used for load testing
@@ -326,21 +422,21 @@ class LoadRunner:
         available_cores = min(available_cores_cpu, available_cores_load_avg)
         return int(available_cores)
 
-    def _get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
+    def __get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
         if stats_folder is not None and stats_file_name is not None:
             stats_file_name = self.__get_file_path(stats_folder, stats_file_name)
         else:
-            stats_file_name = self._get_stats_location(stats_file_name) if stats_file_name is not None else None
+            stats_file_name = self.__get_stats_location(stats_file_name) if stats_file_name is not None else None
         if log_folder is not None and log_file_name is not None:
             log_file_name = self.__get_file_path(log_folder, log_file_name)
         else:
-            log_file_name = self._get_log_location(log_file_name) if log_file_name is not None else None
+            log_file_name = self.__get_log_location(log_file_name) if log_file_name is not None else None
         return stats_file_name, log_file_name
 
-    def _get_stats_location(self, file_name):
+    def __get_stats_location(self, file_name):
         return self.__get_file_path(STATS_FOLDER, file_name)
 
-    def _get_log_location(self, file_name):
+    def __get_log_location(self, file_name):
         return self.__get_file_path(LOGS_FOLDER, file_name)
 
     def __get_file_path(self, folder_path, file_name):
@@ -350,23 +446,23 @@ class LoadRunner:
         todays_file = os.path.join(folder_path, "{today}_{name}".format(today=today, name=file_name))
         return todays_file
 
-    def _child_processes(self):
+    def __child_processes(self):
         current_process = psutil.Process()
         children = current_process.children(recursive=True)
         return children
 
-    def _create_process(self, os_env, options):
+    def __create_process(self, os_env, options):
         p = sp.Popen(options, env=os_env, stdout=sp.PIPE, stderr=sp.STDOUT, stdin=sp.PIPE)
         return p
 
-    def _get_configured_env(self, api_call_weight, env, version, node, normal_min, normal_max):
+    def __get_configured_env(self, api_call_weight, env, version, node, normal_min, normal_max):
         my_env = EnvWrap(os.environ.copy(), API_CALL_WEIGHT=api_call_weight, VERSION=version,
                          NODE=node, ENV=env, N_MIN=normal_min, N_MAX=normal_max, STAT_INTERVAL=LoadRunner.stat_interval)
         return my_env
 
-    def _create_master_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
-                               reset_stats=False, expected_slaves=None, num_clients=None, hatch_rate=None,
-                               run_time=None):
+    def __create_master_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
+                                reset_stats=False, expected_slaves=None, num_clients=None, hatch_rate=None,
+                                run_time=None):
 
         # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR)
         host = self.config.get_api_host(env, node)
@@ -404,7 +500,7 @@ class LoadRunner:
 
         return shlex.split(master_arg_string)
 
-    def _create_slave_options(self, env, node, reset_stats=False):
+    def __create_slave_options(self, env, node, reset_stats=False):
         host = self.config.get_api_host(env, node)
         masterhost = self.master_host_info[0]
         masterport = self.master_host_info[1]
@@ -418,8 +514,8 @@ class LoadRunner:
 
         return shlex.split(slave_arg_string)
 
-    def _create_undistributed_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
-                                      reset_stats=False, num_clients=None, hatch_rate=None, run_time=None):
+    def __create_undistributed_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
+                                       reset_stats=False, num_clients=None, hatch_rate=None, run_time=None):
 
         # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR)
         host = self.config.get_api_host(env, node)
@@ -451,34 +547,29 @@ class LoadRunner:
 
         return shlex.split(undis_arg_string)
 
-    def _ui_state(self):
-        site_data = self.__ui_info(headers={'Cache-Control': 'no-cache'})
-        return site_data["state"]
 
 
-    def _check_ui_slave_count(self):
-        site_data = self.__ui_info()
-        try:
-            slaves_count = len(site_data["slaves"])
-        except KeyError as e:
-            slaves_count = 0
+
+    def __assert_slave_count(self):
+        site_data = self._get_ui_info()
+        slaves_count = site_data["slaves"]
         if self.expected_slaves is not slaves_count:
             raise Load_Test.exceptions.SlaveInitilizationException("All of the slaves where not loaded correctly")
 
 
+    def __assert_web_ui(self):
+        if self.no_web:
+            raise WebOperationNoWebTest("No Test is Running Through the Test UI")
 
-    def _wait_for_locust_process_upboot(self):
-        while time.time() - min([child.create_time() for child in self.children]) < LoadRunner.Locust_Boot_Time:
-            time.sleep(.1)
+
+
+
 
 
     def __response_to_pandas(self, response):
-        if response.status_code is not 200:
-            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI could not be accessed")
-        else:
-            io_string = StringIO(response.content)
-            df = pd.read_csv(io_string, sep=",")
-            return df
+        io_string = StringIO(response.content)
+        df = pd.read_csv(io_string, sep=",")
+        return df
 
 
 
@@ -495,17 +586,14 @@ class LoadRunner:
             raise Exception("Could not find virutal env")
 
 
-    def __ui_info(self, **kwargs):
-        response = self.__request_ui("get", extension="/stats/requests", **kwargs)
-        if response.status_code is not 200:
-            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI could not be accessed")
-        site_data = json.loads(response.content)
-        return site_data
+
 
     @backoff.on_exception(backoff.expo,
                           ConnectionError,
                           max_time=Max_Connection_Time)
     def __request_ui(self, request, extension=None, **kwargs):
+        self.__post_boot_wait()
+        self.__assert_web_ui()
         if self.no_web:
             raise Load_Test.exceptions.AttemptAccessUIWhenNoWeb("Locust is running in no web mode, you can't access the web UI")
         web_ui_host = self.web_ui_host_info[0]
@@ -518,8 +606,55 @@ class LoadRunner:
             host = "https://{web_ui_host}".format(web_ui_host=web_ui_host)
             host = host + extension if extension is not None else host
         response = requests.request(request, host, **kwargs)
+        if response.status_code is not 200:
+            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI route {extension} could not be accessed".format(extension=extension))
         return response
 
 
 
 
+
+
+    def _verify_params(self, api_call_weight, env, version, node):
+        self.__verify_api_routes(api_call_weight)
+        self.__verify_version(api_call_weight, version)
+        self.__verify_env(env)
+        self.__verify_node(env, node)
+
+    def __verify_api_routes(self, api_call_weight):
+        given_routes = api_call_weight.keys()
+        for given_route in given_routes:
+            if not self.config.is_route(given_route):
+                raise InvalidAPIRoute("{inv_route} is not a valid route".format(inv_route=given_route))
+
+    def __verify_env(self, env):
+        if not self.config.is_api_env(env):
+            raise InvalidAPIEnv("{env} is not a valid Env".format(env=env))
+
+    def __verify_node(self, env, node):
+        if not self.config.is_node(env, node):
+            raise InvalidAPINode("{env} does not have node {inv_node}".format(
+                env=env, inv_node=node
+            ))
+
+    def __verify_version(self, api_call_weight, version):
+        route_names = api_call_weight.keys()
+        for route_name in route_names:
+            if not self.config.is_version(route_name, version):
+                raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
+                    version=version, route=route_name
+                ))
+
+
+    def __post_action_wait(self):
+        s_since = time.time() - self.last_write
+        if s_since <= LoadRunner.UI_Action_Delay:
+            to_sleep = LoadRunner.UI_Action_Delay - s_since
+            time.sleep(to_sleep)
+
+
+    def __post_boot_wait(self):
+        s_since = time.time() - self.last_boot
+        if s_since <= LoadRunner.Boot_Time_Delay:
+            to_sleep = LoadRunner.Boot_Time_Delay - s_since
+            time.sleep(to_sleep)

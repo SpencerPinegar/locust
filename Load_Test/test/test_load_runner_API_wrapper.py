@@ -7,8 +7,10 @@ class TestLoadRunnerAPIWrapper(APITest):
 
     def setUp(self):
         super(TestLoadRunnerAPIWrapper, self).setUp()
-        self.load_runner_api_wrapper = LoadRunnerAPIWrapper(self.config, self.load_runner)
-        self.load_runner_api_wrapper.test_runner.default_2_cores = True
+        self.load_runner_api_wrapper = LoadRunnerAPIWrapper(self.master_host_info, self.web_ui_host_info,
+                                                            APITest.SLAVE_LOCUST_FILE, APITest.MASTER_LOCUST_FILE,
+                                                            self.config)
+        self.load_runner_api_wrapper.default_2_cores = True
         self._kill_test()
 
     def tearDown(self):
@@ -85,6 +87,15 @@ class TestLoadRunnerAPIWrapper(APITest):
         self._setup_and_start_benchmark_test({"Nothing": 1})
         self._assert_running()
         self._kill_test()
+
+
+
+    def test_get_stats(self):
+        self._setup_manual_test()
+        self._start_manuel_test()
+        stats = self.load_runner_api_wrapper.get_stats()
+        requests = stats["Total"]["num requests"]
+        self.assertGreater(requests, 0, "No requests where sent out")
 
 
 

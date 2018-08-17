@@ -22,7 +22,6 @@ def shutdown():
 def main_func(two_cores):
     LoadRunnerAPIWrapper.setup()
     LoadRunnerAPIWrapper.TEST_API_WRAPPER.default_2_cores = two_cores
-    LoadRunnerAPIWrapper.TEST_API_WRAPPER._test_runner._default_2_cores = two_cores
     killer = GracefulKiller()
     app_args = {
         "port": LoadRunnerAPIWrapper.web_api_host_info[1],

@@ -1,6 +1,7 @@
 from requests.exceptions import ConnectionError
-from Load_Test.exceptions import (TestAlreadyRunning, InvalidAPIRoute, InvalidAPIEnv, InvalidAPINode,
-                                  InvalidAPIVersion, LocustUIUnaccessible, SlaveInitilizationException, LostTestRunnerAPIObject)
+from Load_Test.exceptions import (TestAlreadyRunning, WebOperationNoWebTest,
+                                   LocustUIUnaccessible, SlaveInitilizationException,
+                                  LostTestRunnerAPIObject)
 from Load_Test.config import Config
 from Load_Test.load_runner import LoadRunner
 import time
@@ -9,7 +10,7 @@ import os
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
 
 
-class LoadRunnerAPIWrapper:
+class LoadRunnerAPIWrapper(LoadRunner):
     # TODO make come from config
 
     Stats_Folder = os.path.join(API_Load_Test_Dir, "Stats")
@@ -28,14 +29,13 @@ class LoadRunnerAPIWrapper:
     TEST_API_WRAPPER = None
     Extension = '/LoadServer'
 
-
     @classmethod
     def setup(cls):
         config = Config()
-        load_runner = LoadRunner(LoadRunnerAPIWrapper.master_host_info, LoadRunnerAPIWrapper.web_ui_host_info,
+        load_runner_api_wrapper = LoadRunnerAPIWrapper(LoadRunnerAPIWrapper.master_host_info, LoadRunnerAPIWrapper.web_ui_host_info,
                                  LoadRunnerAPIWrapper.Slave_Locust_File, LoadRunnerAPIWrapper.Master_Locust_File,
                                  config)
-        LoadRunnerAPIWrapper.TEST_API_WRAPPER = LoadRunnerAPIWrapper(config, load_runner)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER =load_runner_api_wrapper
 
     @classmethod
     def teardown(cls):
@@ -44,26 +44,20 @@ class LoadRunnerAPIWrapper:
         else:
             LoadRunnerAPIWrapper.TEST_API_WRAPPER.stop_tests()
 
+    def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config):
+        LoadRunner.__init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config)
 
 
+    def stop_tests(self):
+        self._kill_test()
 
-
-    def __init__(self, config, loadrunner):
-        self.config = config
-        self._test_runner = loadrunner
-
-
-    @property
-    def test_runner(self):
-        return self._test_runner
-
-    @property
-    def no_web(self):
-        return self._test_runner.no_web
-
-    def is_running(self):
+    def is_running(self, conn_error_raise=False):
+        if conn_error_raise:
+            to_catch = (LocustUIUnaccessible, SlaveInitilizationException)
+        else:
+            to_catch = (LocustUIUnaccessible, ConnectionError, SlaveInitilizationException)
         try:
-            is_running = self._test_runner.is_running()
+            is_running = self._is_running()
             if not is_running:
                 test_type = None
                 return is_running, test_type
@@ -71,7 +65,7 @@ class LoadRunnerAPIWrapper:
                 test_type = self.Current_Benchmark_Test_Msg
             else:
                 test_type = self.Current_Manuel_Test_Msg
-        except(LocustUIUnaccessible, ConnectionError, SlaveInitilizationException):
+        except to_catch as e:
             is_running = False
             test_type = None
             return is_running, test_type
@@ -79,13 +73,14 @@ class LoadRunnerAPIWrapper:
             return is_running, test_type
 
     def is_setup(self):
-        is_running, type = self.is_running()
-        if is_running:
-            is_setup = False
-            test_type = type
-            return is_setup, test_type
         try:
-            is_setup = self._test_runner.is_setup()
+            is_running, type = self.is_running(conn_error_raise=True)
+            if is_running:
+                is_setup = False
+                test_type = type
+                return is_setup, test_type
+
+            is_setup = self._is_setup()
             if not is_setup:
                 test_type = None
                 return is_setup, test_type
@@ -111,10 +106,10 @@ class LoadRunnerAPIWrapper:
         self.stop_tests()
         self._verify_params(api_call_weight, env, version, node)
         file_prefix = "Manuel"
-        self._test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
-                                         stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
-                                         log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                         log_level="ERROR")
+        self._run_multi_core(api_call_weight, env, node, version, min, max,
+                                          stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                                          log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
+                                          log_level="ERROR")
 
     def setup_and_start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate,
                                        run_time,
@@ -123,50 +118,35 @@ class LoadRunnerAPIWrapper:
         self.stop_tests()
         self._verify_params(api_call_weight, env, version, node)
         file_prefix = "Benchmark"
-        self._test_runner.run_multi_core(api_call_weight, env, node, version, min, max,
-                                         stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
-                                         log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                         log_level="ERROR",
-                                         no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
-                                         run_time=run_time, reset_stats=reset_stats)
+        self._run_multi_core(api_call_weight, env, node, version, min, max,
+                                          stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                                          log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
+                                          log_level="ERROR",
+                                          no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
+                                          run_time=run_time, reset_stats=reset_stats)
+
+
 
     def start_manuel_from_ui(self, locust_count, hatch_rate):
-        time.sleep(LoadRunner.Run_From_UI_Delay)
-        self.__raise_if_running()
-        self._test_runner.run_from_ui(locust_count, hatch_rate)
+        if self._is_setup():
+            self._start_ui_load(locust_count, hatch_rate)
+        else:
+            if self.no_web:
+                raise TestAlreadyRunning(self.Current_Benchmark_Test_Msg)
+            else:
+                raise WebOperationNoWebTest("The web UI has not been set up yet")
 
-    def stop_tests(self):
-        self._test_runner.stop_test()
 
-    def _verify_params(self, api_call_weight, env, version, node):
-        self.__verify_api_routes(api_call_weight)
-        self.__verify_version(api_call_weight, version)
-        self.__verify_env(env)
-        self.__verify_node(env, node)
+    def get_stats(self):
+        dist_stats = self._get_ui_request_distribution_stats()
+        info = self._get_ui_info()
+        for api_call in dist_stats.keys():
+            info[api_call].update(dist_stats[api_call])
+        return info
 
-    def __verify_api_routes(self, api_call_weight):
-        given_routes = api_call_weight.keys()
-        for given_route in given_routes:
-            if not self.config.is_route(given_route):
-                raise InvalidAPIRoute("{inv_route} is not a valid route".format(inv_route=given_route))
 
-    def __verify_env(self, env):
-        if not self.config.is_api_env(env):
-            raise InvalidAPIEnv("{env} is not a valid Env".format(env=env))
 
-    def __verify_node(self, env, node):
-        if not self.config.is_node(env, node):
-            raise InvalidAPINode("{env} does not have node {inv_node}".format(
-                env=env, inv_node=node
-            ))
 
-    def __verify_version(self, api_call_weight, version):
-        route_names = api_call_weight.keys()
-        for route_name in route_names:
-            if not self.config.is_version(route_name, version):
-                raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
-                    version=version, route=route_name
-                ))
 
     def __raise_if_running(self):
         test_running, msg = self.is_running()
