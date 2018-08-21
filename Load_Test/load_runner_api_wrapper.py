@@ -6,6 +6,9 @@ from Load_Test.config import Config
 from Load_Test.load_runner import LoadRunner
 import time
 import os
+from Load_Test.automated_test_case import AutomatedTestCase
+
+
 
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
 
@@ -28,6 +31,8 @@ class LoadRunnerAPIWrapper(LoadRunner):
     Setup_Manuel_Test_Msg = u"A manuel test is setup on this server - view/run it through the UI"
     TEST_API_WRAPPER = None
     Extension = '/LoadServer'
+
+
 
     @classmethod
     def setup(cls):
@@ -127,14 +132,21 @@ class LoadRunnerAPIWrapper(LoadRunner):
 
 
 
-    def start_manuel_from_ui(self, locust_count, hatch_rate):
-        if self._is_setup():
-            self._start_ui_load(locust_count, hatch_rate)
-        else:
-            if self.no_web:
-                raise TestAlreadyRunning(self.Current_Benchmark_Test_Msg)
+    def start_ramp_up(self, locust_count, hatch_rate, first_start=True):
+        state = self.state
+        if state == "idle":
+            raise WebOperationNoWebTest("The web UI has not been set up yet")
+        elif state == "running no web":
+            raise TestAlreadyRunning(self.Current_Benchmark_Test_Msg)
+        elif first_start:
+            if state in ["ready", "stopped"]:
+                self._start_ui_load(locust_count, hatch_rate)
             else:
-                raise WebOperationNoWebTest("The web UI has not been set up yet")
+                raise TestAlreadyRunning(self.Current_Manuel_Test_Msg)
+        else:
+            self._start_ui_load(locust_count, hatch_rate)
+
+
 
 
     def get_stats(self):
@@ -145,6 +157,22 @@ class LoadRunnerAPIWrapper(LoadRunner):
         return info
 
 
+    def reset_stats(self):
+        if self.is_running() and not self.no_web:
+            self._reset_stats()
+        else:
+            raise WebOperationNoWebTest("The web UI has not been set up and started yet")
+
+
+
+    def run_automated_test_case(self, setup_name, procedure_name):
+        self.automated_test = AutomatedTestCase(setup_name, procedure_name,
+                                                LoadRunnerAPIWrapper.Stat_Interval, LoadRunnerAPIWrapper.TEST_API_WRAPPER.setup_manuel_test,
+                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER.stop_tests, LoadRunnerAPIWrapper.TEST_API_WRAPPER.get_stats,
+                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_ramp_up, LoadRunnerAPIWrapper.TEST_API_WRAPPER.reset_stats,
+                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER._users_property_function_wrapper, self.config)
+        self.automated_test.run()
+
 
 
 
@@ -152,3 +180,5 @@ class LoadRunnerAPIWrapper(LoadRunner):
         test_running, msg = self.is_running()
         if test_running:
             raise TestAlreadyRunning(msg)
+
+

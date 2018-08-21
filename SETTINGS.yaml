@@ -2,6 +2,40 @@
 ###    https://wiki.movenetworks.com/display/RSCLOUD/Deployment+Notes+And+Status#DeploymentNotesAndStatus-BETArsdvr-beta
 
 #TODO: Allow this information to be updated based on a simple webscrape of the above URL
+Setups:
+
+  Node User Recordings:
+   api call: {"User Recordings Ribbon": 1}
+   env: DEV2
+   node: 1
+   version: 1
+   min: 45
+   max: 50
+
+Procedures:
+
+  Benchmark Node:
+    -
+      init user count: 0
+      final user count: 200
+      hatch rate: 30
+      time at load: 60
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 200
+      final user count: 280
+      hatch rate: 10
+      time at load: 60
+      fresh procedure stats: false
+      ramp up stats seperate: true
+    -
+      init user count: 280
+      final user count: 350
+      hatch rate: 1
+      time at load: 60
+      fresh procedure stats: true
+      ramp up stats seperate: false
 
 
 

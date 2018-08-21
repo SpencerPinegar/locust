@@ -22,9 +22,9 @@ from requests.exceptions import ConnectionError
 import backoff
 from Load_Test.exceptions import (SlaveInitilizationException, WebOperationNoWebTest, InvalidAPIRoute, InvalidAPIEnv,
                                   InvalidAPIVersion, InvalidAPINode)
-
-
 from Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
+
+
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -51,7 +51,7 @@ MASTER_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "master_locust.py")
 class LoadRunner:
     assumed_load_average_added = 1
     assumed_cpu_used = 7
-    stat_interval = 2
+    Stat_Interval = 2
     total_used_cpu_running_threshold = 9  # TODO Find actual threshold
     process_age_limit = 2  # TODO Find process age limit
     Succesful_Test_Start = {"message": "Swarming started", "success": True}
@@ -63,7 +63,7 @@ class LoadRunner:
     UI_Action_Delay = 2
 
     # TODO: make a method to ensure the class is not running any proccesses from last run
-
+    # TODO: make sure children is not tainted by automated_test in background
     def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config):
         self.master = None
         self.slaves = []
@@ -78,8 +78,31 @@ class LoadRunner:
         self._default_2_cores = False
         self._last_write_acton = time.time()
         self._last_boot_time = time.time()
+        self._users = -1
+        self._hatch_rate = -1
+        self.automated_test = None
+
+    @property
+    def users(self):
+        self.__post_boot_wait()
+        if not self.children:
+            return -1
+        elif self.no_web:
+            return self._users
+        else:
+            return self._get_ui_info()["user_count"]
 
 
+
+    @property
+    def state(self):
+        self.__post_boot_wait()
+        if not self.children:
+            return "idle"
+        elif self.no_web:
+            return "running no web"
+        else:
+            return self._ui_state()
 
     @property
     def last_boot(self):
@@ -169,6 +192,8 @@ class LoadRunner:
 
 
     def _start_ui_load(self, locust_count, hatch_rate):
+        self._users = locust_count
+        self._hatch_rate = hatch_rate
         json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
         response = self.__request_ui("post", extension="/swarm", data=json_params)
         if json.loads(response.content) != LoadRunner.Succesful_Test_Start:
@@ -178,7 +203,8 @@ class LoadRunner:
 
 
     def _stop_ui_test(self):
-        self.__post_action_wait()
+        self._users = -1
+        self._hatch_rate = -1
         response = self.__request_ui("get", extension="/stop")
         if json.loads(response.content) != LoadRunner.Succesful_Test_Stop:
             raise Load_Test.exceptions.FailedToStartLocustUI("The /stop loocust URL was accessed but the test was not properly stopped")
@@ -193,11 +219,14 @@ class LoadRunner:
 
 #### Server Uitility Commands
     def _kill_test(self):
+
         try:
             if self.no_web:
                 info_list, return_codes = self.__fresh_state(True)
             else:
                 info_list, return_codes = self.__fresh_state(False)
+            self._users = -1
+            self._hatch_rate = -1
             return info_list, return_codes
         except:
             raise
@@ -208,6 +237,7 @@ class LoadRunner:
                         reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
                         stats_folder=None, log_folder=None):
         self.no_web = no_web
+        self._users = num_clients
         available_cores = self.__avaliable_cpu_count()
         if self.default_2_cores:
             available_cores = 2
@@ -239,6 +269,7 @@ class LoadRunner:
                          no_web=False, reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
                          stats_folder=None, log_folder=None):
         self.no_web = no_web
+        self._users = num_clients
         stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
         os_env = self.__get_configured_env(api_call_weight, env, version, node, n_min, n_max)
 
@@ -250,37 +281,31 @@ class LoadRunner:
 
 
     def _is_running(self):
-
-        self.__post_action_wait()
-        children = self.children
-        if not children:
+        state = self.state
+        if state == "idle":
             return False
-        elif self.no_web is True:
+        elif state == "running no web":
             return True
         else:
-            state = self._ui_state()
             if state == "running" or state == "hatching":
                 return True
             else:
                 return False
 
     def _is_setup(self):
-        self.__post_action_wait()
-        children = self.children
-        if not children:
+        state = self.state
+        if state == "idle":
             return False
-        elif self.no_web is True:
+        elif state == "running no web":
             if len(self.children) is not self.expected_slaves + 1:
                 raise SlaveInitilizationException("All of the slaves where not loaded correctly")
             return False
-        else:
+        elif state == "ready" or state == "stopped":
+            self.__assert_slave_count()
+            return True
+        return False
 
-            state = self._ui_state()
-            if state == "ready":# or state =="stopped":#TODO: if stopped
-                self.__assert_slave_count()
-                return True
-            else:
-                return False
+
 
 
 #### SERVER READ COMMANDS
@@ -349,6 +374,10 @@ class LoadRunner:
         df = self.__response_to_pandas(response)
         return df
     #####    THESE ARE THE HELPER FUNCTIONS
+
+
+    def _users_property_function_wrapper(self):
+        return self.users
 
 
     def __fresh_state(self, wait):
@@ -457,14 +486,14 @@ class LoadRunner:
 
     def __get_configured_env(self, api_call_weight, env, version, node, normal_min, normal_max):
         my_env = EnvWrap(os.environ.copy(), API_CALL_WEIGHT=api_call_weight, VERSION=version,
-                         NODE=node, ENV=env, N_MIN=normal_min, N_MAX=normal_max, STAT_INTERVAL=LoadRunner.stat_interval)
+                         NODE=node, ENV=env, N_MIN=normal_min, N_MAX=normal_max, STAT_INTERVAL=LoadRunner.Stat_Interval)
         return my_env
 
     def __create_master_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
                                 reset_stats=False, expected_slaves=None, num_clients=None, hatch_rate=None,
                                 run_time=None):
 
-        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR)
+        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) (maybe, currently port forwarded
         host = self.config.get_api_host(env, node)
         web_ui_host = self.web_ui_host_info[0]
         web_ui_port = self.web_ui_host_info[1]
@@ -517,7 +546,7 @@ class LoadRunner:
     def __create_undistributed_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
                                        reset_stats=False, num_clients=None, hatch_rate=None, run_time=None):
 
-        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR)
+        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) maybe, currently port forwarding
         host = self.config.get_api_host(env, node)
         locust_path = "locust"#self.__get_locust_file_dir()
 
@@ -658,3 +687,4 @@ class LoadRunner:
         if s_since <= LoadRunner.Boot_Time_Delay:
             to_sleep = LoadRunner.Boot_Time_Delay - s_since
             time.sleep(to_sleep)
+

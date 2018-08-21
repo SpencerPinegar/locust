@@ -52,6 +52,15 @@ class Config(object):
 
 
 
+    def get_test_setup(self, name):
+        return self.settings["Setups"][name]
+
+
+    def get_test_procedure(self, name):
+        return self.settings["Procedures"][name]
+
+
+
     def get_function_querry(self, function_route):
         return SQL_ROUTES_STATEMENTS[function_route]
 

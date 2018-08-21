@@ -53,8 +53,8 @@ class TestLoadRunner(APITest):
         stats_file_before_reset = self.load_runner._get_ui_request_distribution_stats()
         self.load_runner._reset_stats()
         stats_file_after_reset = self.load_runner._get_ui_request_distribution_stats()
-        pre_stats = stats_file_before_reset["# requests"].tail(1).values[0]
-        post_stats = stats_file_after_reset["# requests"].tail(1).values[0]
+        pre_stats = stats_file_before_reset["Total"]["num requests"]
+        post_stats = stats_file_after_reset["Total"]["num requests"]
         self.assertNotEqual(pre_stats, 0, "No requests where sent out")
         self.assertGreater(pre_stats, post_stats, "You did not correctly reset the stats through the ui")
 
@@ -65,7 +65,7 @@ class TestLoadRunner(APITest):
         self._basic_setup()
         self.load_runner._stop_ui_test()
         time.sleep(1)
-        state = self.load_runner._ui_state()
+        state = self.load_runner.state
         self.assertEqual("stopped", state, "The Locust UI was not stopped correctly")
 
 
@@ -98,7 +98,7 @@ class TestLoadRunner(APITest):
         self.load_runner._start_ui_load(users, hatchrate)
         self.__wait_hatched(users, hatchrate)
         actt_users = self.__user_amount()
-        state_hopefully_running = self.load_runner._ui_state()
+        state_hopefully_running = self.load_runner.state
         self.assertEqual(users, actt_users, "All the users did not load properly")
         self.assertEqual("running", state_hopefully_running, "The Locust UI was not started correctly from UI")
 

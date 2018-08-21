@@ -187,7 +187,7 @@ class TestAPIApp(APITest):
         expected_params = self.__get_start_manuel_params()
         call_id, response = self.__remote_api_call("startManualTest", expected_params)
         self.__assert_error(response, call_id,
-                            {u'message': u'OtherError: The /swarm locust URL could not be accessed', u'code': 500,
+                            {u'message': u'OtherError: The web UI has not been set up yet', u'code': 500,
                              u'data': None, u'name': u'OtherError'})
 
     def _assert_setup_and_run_benchmark(self, **kwargs):

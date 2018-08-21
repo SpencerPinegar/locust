@@ -1,7 +1,7 @@
 from Load_Test.api_test import APITest
 from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
 from Load_Test.exceptions import TestAlreadyRunning
-
+import time
 
 class TestLoadRunnerAPIWrapper(APITest):
 
@@ -11,6 +11,7 @@ class TestLoadRunnerAPIWrapper(APITest):
                                                             APITest.SLAVE_LOCUST_FILE, APITest.MASTER_LOCUST_FILE,
                                                             self.config)
         self.load_runner_api_wrapper.default_2_cores = True
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER = self.load_runner_api_wrapper
         self._kill_test()
 
     def tearDown(self):
@@ -98,6 +99,19 @@ class TestLoadRunnerAPIWrapper(APITest):
         self.assertGreater(requests, 0, "No requests where sent out")
 
 
+    # def test_run_automated_test_case(self):
+    #     self.load_runner_api_wrapper.run_automated_test_case("Node User Recordings", "Benchmark Node")
+    #     test_proc = self.config.get_test_procedure("Benchmark Node")
+    #     time_for_test = 0
+    #     for test in test_proc:
+    #         hatch_time = (test["final user count"] - test["init user count"])/test["hatch rate"]
+    #         time_for_test += int(test["time at load"]) + hatch_time
+    #     time.sleep(1.2 * time_for_test)
+    #TODO: FINISH
+
+
+
+
 
 
 
@@ -117,7 +131,7 @@ class TestLoadRunnerAPIWrapper(APITest):
                                                                     self.n_max, self.n_clients, self.hatch_rate, self.time, False)
 
     def _start_manuel_test(self):
-        self.load_runner_api_wrapper.start_manuel_from_ui(locust_count=200, hatch_rate=200)
+        self.load_runner_api_wrapper.start_ramp_up(locust_count=200, hatch_rate=200, first_start=True)
 
     def _kill_test(self):
         self.load_runner_api_wrapper.stop_tests()
@@ -150,6 +164,10 @@ class TestLoadRunnerAPIWrapper(APITest):
             self._setup_and_start_benchmark_test()
 
 
+
+    def _assert_automated_test_file(self, file):
+        #TODO: create this function
+        pass
 
 
 

@@ -44,7 +44,7 @@ def thread_webAPP(extension, **kwargs):
 
     @jsonrpc.method("startManualTest(num_users=int, hatch_rate=float) -> dict")
     def start_manuel_test(num_users, hatch_rate):
-        LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_manuel_from_ui(num_users, hatch_rate)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_ramp_up(num_users, hatch_rate, True)
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
 
 

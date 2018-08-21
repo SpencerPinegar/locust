@@ -18,6 +18,9 @@ class TestConfig(APITest):
         self.expected_api_env_params = {"VIP Host", "Node Host", "Total Nodes"}
         self.expected_api_base = {"Environments", "Routes", "Misc Tests"}
         self.expected_misc_tests = {"Nothing", "Redundant Ts Segment", "Basic Network", "Network Byte Size", "Small DB", "Large DB"}
+        self.expected_setup_params = {"node", "version", "env", "min", "max", "api call"}
+        self.expected_procedure_params = {"init user count","final user count","hatch rate","time at load",
+                                          "fresh procedure stats","ramp up stats seperate"}
 
 
 
@@ -193,6 +196,19 @@ class TestConfig(APITest):
     def test_misc_routes(self):
         for route in self.expected_misc_tests:
             self.assertTrue(self.config.is_route(route))
+
+
+
+    def test_get_test_setup(self):
+        user_recordings_setup = self.config.get_test_setup("Node User Recordings")
+        self.assertItemsEqual(self.expected_setup_params, set(user_recordings_setup.keys()), "The test setup did not contain all neccesary keys")
+
+    def test_get_test_procedure(self):
+        benchmark_node_setup = self.config.get_test_procedure("Benchmark Node")
+        self.assertTrue(isinstance(benchmark_node_setup, list))
+        for procedure in benchmark_node_setup:
+            self.assertItemsEqual(self.expected_procedure_params, procedure.keys(), "The test procedcure did not contain all neccesary keys")
+
 
 
 
