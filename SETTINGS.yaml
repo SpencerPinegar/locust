@@ -12,33 +12,130 @@ Setups:
    min: 45
    max: 50
 
+  VIP User Recordings:
+    api call: {"User Recordings Ribbon": 1}
+    env: DEV2
+    node: 1
+    version: 1
+    min: 45
+    max: 50
+
+  Node Network:
+    api call: {Basic Network: 1}
+    env: DEV2
+    node: 1
+    min: 45
+    max: 50
+
+  VIP Network:
+    api call: {Basic Network: 1}
+    env: DEV2
+    node: 1
+    min: 45
+    max: 50
+
+
 Procedures:
 
-  Benchmark Node:
+  Node Benchmark:
     -
       init user count: 0
       final user count: 200
-      hatch rate: 30
-      time at load: 60
+      hatch rate: 10
+      time at load: 30
       fresh procedure stats: false
       ramp up stats seperate: false
     -
       init user count: 200
       final user count: 280
       hatch rate: 10
-      time at load: 60
+      time at load: 30
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 200
+      final user count: 280
+      hatch rate: 0
+      time at load: 30
+      fresh procedure stats: false
+      ramp up stats seperate: false
+
+  VIP Benchmark:
+    -
+      init user count: 0
+      final user count: 1200
+      hatch rate: 60
+      time at load: 30
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 1200
+      final user count: 1680
+      hatch rate: 60
+      time at load: 30
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 1680
+      final user count: 1200
+      hatch rate: 0
+      time at load: 30
+      fresh procedure stats: false
+      ramp up stats seperate: false
+
+
+  Node Soak:
+    -
+      init user count: 0
+      final user count: 150
+      hatch rate: 2
+      time at load:
+      fresh procedure stats: false
+      ramp up stats seperate: true
+
+
+
+
+
+  Test Level Platue Level Back Down:
+    -
+      init user count: 0
+      final user count: 200
+      hatch rate: 30
+      time at load: .5
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 200
+      final user count: 280
+      hatch rate: 10
+      time at load: .5
       fresh procedure stats: false
       ramp up stats seperate: true
     -
       init user count: 280
       final user count: 350
       hatch rate: 1
-      time at load: 60
+      time at load: .5
+      fresh procedure stats: true
+      ramp up stats seperate: false
+    -
+      init user count: 350
+      final user count: 200
+      hatch rate: 1
+      time at load: .5
       fresh procedure stats: true
       ramp up stats seperate: false
 
 
-
+  Test Basic :
+    -
+      init user count: 0
+      final user count: 200
+      hatch rate: 30
+      time at load: .5
+      fresh procedure stats: false
+      ramp up stats seperate: false
 
 DataBase Settings:
   Environments:
@@ -351,6 +448,7 @@ RecAPI Settings:
     - Network Byte Size
     - Small DB
     - Large DB
+    - Nginx Check
 
 
 

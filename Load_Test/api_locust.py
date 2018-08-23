@@ -33,54 +33,60 @@ class APITasks(TaskSet):
         APITasks.setup_based_on_env_vars()
 
     def _user_recordings_ribbon(locust):
-
         json_data = APITasks.user_recordings_pool.get_json()
-        APITasks.post_json_csm_copy(locust, json_data, APITasks.urr_url)
+        APITasks.post_json_csm_copy(locust, json_data, APITasks.urr_url, name="User Recordings Ribbon")
 
 
 
     def _user_franchise_ribbon(locust):
+        call_name = APITasks.__get_labeled_name("User Franchise Ribbon")
         json_data = APITasks.user_franchise_pool.get_json()
-        locust.client.post(APITasks.ufr_url, json=json_data)
+        locust.client.post(APITasks.ufr_url, json=json_data, name=call_name)
 
 
 
     def _user_recspace_information(locust):
+        call_name = APITasks.__get_labeled_name("User Recspace Information")
         json_data = APITasks.user_recspace_info_pool.get_json()
-        locust.client.post(APITasks.uri_url, json=json_data)
+        locust.client.post(APITasks.uri_url, json=json_data, name=call_name)
 
 
 
 
     def _update_user_settings(locust):
+        call_name = APITasks.__get_labeled_name("Update User Settings")
         json_data = APITasks.update_user_settings_pool.get_json()
-        locust.client.post(APITasks.uus_url, json=json_data)
+        locust.client.post(APITasks.uus_url, json=json_data, name=call_name)
 
 
 
     def _protect_recordings(locust):
+        call_name = APITasks.__get_labeled_name("Protect Recordings")
         json_data = APITasks.protect_recordings_pool.get_json()
-        locust.client.post(APITasks.pr_url, json=json_data)
+        locust.client.post(APITasks.pr_url, json=json_data, name=call_name)
 
 
 
 
     def _mark_watched(locust):
+        call_name = APITasks.__get_labeled_name("Mark Watched")
         json_data = APITasks.marked_watched_pool.get_json()
-        locust.client.post(APITasks.mw_url, json=json_data)
+        locust.client.post(APITasks.mw_url, json=json_data, name=call_name)
 
 
 
 
     def _update_user_rules(locust):
+        call_name = APITasks.__get_labeled_name("Update Rules")
         json_data = APITasks.update_rules_pool.get_json()
-        locust.client.post(APITasks.ur_url, json=json_data)
+        locust.client.post(APITasks.ur_url, json=json_data, name=call_name)
 
 
 
     def _list_user_rules(locust):
+        call_name = APITasks.__get_labeled_name("List Rules")
         json_data = APITasks.list_rules_pool.get_json()
-        locust.client.post(APITasks.lr_url, json=json_data)
+        locust.client.post(APITasks.lr_url, json=json_data, name=call_name)
 
 
     def _nothing(self):
@@ -126,6 +132,11 @@ class APITasks(TaskSet):
 
         #APITasks._get_and_validate_ts_segment(locust, ts_url, ts_content_hash)
 
+    def _nginx_check(locust):
+        call_name = APITasks.__get_labeled_name("Nginx Check")
+        locust.client.post(APITasks.nginx_url, name=call_name)
+
+
 
 
 
@@ -149,6 +160,7 @@ class APITasks(TaskSet):
         "Network Byte Size": _network_byte_size,
         "Small Data Base": _small_db,
         "Large Data Base": _large_db,
+        "Nginx Check": _nginx_check,
 
 
     }#TODO: FIND WAY TO MAKE VALID API ROUTES
@@ -254,6 +266,10 @@ class APITasks(TaskSet):
 
             elif api_call == "Large Data Base":
                 cls.large_db_url = "{host}/rec/test/big-db-test/".format(host=api_base_host)
+                logger.debug("Set up {0} Info".format(api_call))
+
+            elif api_call == "Nginx Check":
+                cls.nginx_url = "{host}/srv-ok".format(host=api_base_host)
                 logger.debug("Set up {0} Info".format(api_call))
 
             else:

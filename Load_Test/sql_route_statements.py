@@ -4,7 +4,7 @@ SQL_ROUTES_STATEMENTS = {
                                 SELECT
                                 u.{arg1}
                                 FROM content_recordinguser u JOIN rsstuff_rsrecording r ON u.guid = r.user_guid
-                                WHERE r.rec_start < now() AND r.health_percent > 5 AND r.active
+                                WHERE r.health_percent > 50 AND r.active AND r.state = 2 OR r.state = 3
                                 GROUP BY u.guid
                                 HAVING count (r.id) >= {min} AND count (r.id) <= {max}
     """,

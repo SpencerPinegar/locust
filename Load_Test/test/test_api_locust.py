@@ -52,6 +52,9 @@ class TestAPILocust(APITest):
     def test_large_db(self):
         self._test_undistributed("Large Data Base", 1, False)
 
+    def test_nginx_check(self):
+        self._test_undistributed("Nginx Check", 1, False)
+
 
 
 
