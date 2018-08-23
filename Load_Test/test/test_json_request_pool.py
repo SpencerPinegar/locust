@@ -57,9 +57,16 @@ class TestReadOnlyRequestPool(APITest):
         response = requests.post(url, json=json_post_post)
         self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
         # this test wont be valid unless we have a 200 response
-        response_len = len(json.loads(response.content)["rs_recordings"])
+        recordings = json.loads(response.content)["rs_recordings"]
+
         min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-        self.assertTrue((min_len <= response_len <= max_len), TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+        rec_count = 0
+        for rec in recordings:
+            try:
+                rec_count += int(rec["num_episodes"])
+            except KeyError as e:
+                rec_count += 1
+        self.assertTrue((min_len <= rec_count <= max_len), TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
     def test_user_recordings_ribbon_v4(self):
         route_name, version = ("User Recordings Ribbon", 4)
@@ -71,9 +78,15 @@ class TestReadOnlyRequestPool(APITest):
         response = requests.post(url, json=json_post_post)
         self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
         # this test wont be valid unless we have a 200 response
-        response_len = len(json.loads(response.content)["rs_recordings"])
+        recordings = json.loads(response.content)["rs_recordings"]
+        rec_count = 0
+        for rec in recordings:
+            try:
+                rec_count += int(rec["num_episodes"])
+            except KeyError as e:
+                rec_count += 1
         min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-        self.assertTrue(min_len <= response_len <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+        self.assertTrue(min_len <= rec_count <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
 
 
