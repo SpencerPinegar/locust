@@ -67,12 +67,11 @@ class TestAPILocust(APITest):
         self._test_undistributed("DOESNT MATTER", 1, False, api_call_weight=api_call_weight, test_time="1m")
 
 
-    def test_set_tasks(self):
-        api_call_weight = {"User Recordings Ribbon": 1, "User Franchise Ribbon": 1}
-        APITasks.api_call_weight = api_call_weight
-        APITasks._set_tasks()
+    #def test_set_tasks(self):
+     #   api_call_weight = {"User Recordings Ribbon": 1, "User Franchise Ribbon": 1}
+      ##  APITasks.api_call_weight = api_call_weight
+       # APITasks._set_tasks()
 
-        print("huh")
 
 
 

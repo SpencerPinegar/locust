@@ -34,59 +34,49 @@ class APITasks(TaskSet):
 
     def _user_recordings_ribbon(locust):
         json_data = APITasks.user_recordings_pool.get_json()
-        APITasks.post_json_csm_copy(locust, json_data, APITasks.urr_url, name="User Recordings Ribbon")
+        APITasks.post_json_csm_copy(locust, APITasks.urr_url, json_info=json_data, name="User Recordings Ribbon")
 
 
 
     def _user_franchise_ribbon(locust):
-        call_name = APITasks.__get_labeled_name("User Franchise Ribbon")
         json_data = APITasks.user_franchise_pool.get_json()
-        locust.client.post(APITasks.ufr_url, json=json_data, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.ufr_url, json_info=json_data, name ="User Franchise Ribbon")
 
 
 
     def _user_recspace_information(locust):
-        call_name = APITasks.__get_labeled_name("User Recspace Information")
         json_data = APITasks.user_recspace_info_pool.get_json()
-        locust.client.post(APITasks.uri_url, json=json_data, name=call_name)
-
+        APITasks.post_json_csm_copy(locust, APITasks.uri_url, json_info=json_data, name="User Recspace Info")
 
 
 
     def _update_user_settings(locust):
-        call_name = APITasks.__get_labeled_name("Update User Settings")
         json_data = APITasks.update_user_settings_pool.get_json()
-        locust.client.post(APITasks.uus_url, json=json_data, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.uus_url, json_info=json_data, name="Update User Settings")
 
 
 
     def _protect_recordings(locust):
-        call_name = APITasks.__get_labeled_name("Protect Recordings")
         json_data = APITasks.protect_recordings_pool.get_json()
-        locust.client.post(APITasks.pr_url, json=json_data, name=call_name)
-
+        APITasks.post_json_csm_copy(locust, APITasks.pr_url, json_info=json_data, name="Protect Recordings")
 
 
 
     def _mark_watched(locust):
-        call_name = APITasks.__get_labeled_name("Mark Watched")
         json_data = APITasks.marked_watched_pool.get_json()
-        locust.client.post(APITasks.mw_url, json=json_data, name=call_name)
-
+        APITasks.post_json_csm_copy(locust, APITasks.mw_url, json_info=json_data, name="Mark Watched")
 
 
 
     def _update_user_rules(locust):
-        call_name = APITasks.__get_labeled_name("Update Rules")
         json_data = APITasks.update_rules_pool.get_json()
-        locust.client.post(APITasks.ur_url, json=json_data, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.ur_url, json_info=json_data, name="Update Rules")
 
 
 
     def _list_user_rules(locust):
-        call_name = APITasks.__get_labeled_name("List Rules")
         json_data = APITasks.list_rules_pool.get_json()
-        locust.client.post(APITasks.lr_url, json=json_data, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.lr_url, json_info=json_data, name="List Rules")
 
 
     def _nothing(self):
@@ -112,29 +102,22 @@ class APITasks(TaskSet):
                     response.success()
 
     def _basic_network(locust):
-        call_name = APITasks.__get_labeled_name("Basic Network Test")
-        locust.client.post(APITasks.basic_network_url, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.basic_network_url, name="Basic Network Test")
 
 
     def _network_byte_size(locust):
         payload = {"byte_size": "3"} #TODO Make this configurable - ideally by allowing params to be passed in with api_call_weight
-        call_name = APITasks.__get_labeled_name("Byte Size Network Test")
-        locust.client.post(APITasks.network_byte_size_url,  name=call_name, json=payload)
+        APITasks.post_json_csm_copy(locust, APITasks.network_byte_size_url, json_info=payload, name="Network Byte Size")
 
 
     def _small_db(locust):
-        call_name = APITasks.__get_labeled_name("Small Data Base Query Network Test")
-        locust.client.post(APITasks.small_db_url, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.small_db_url, name="Small Data Base Query Network Test")
 
     def _large_db(locust):
-        call_name = APITasks.__get_labeled_name("Large Data Base Query Network Test")
-        locust.client.post(APITasks.large_db_url, name=call_name)
-
-        #APITasks._get_and_validate_ts_segment(locust, ts_url, ts_content_hash)
+        APITasks.post_json_csm_copy(locust, APITasks.large_db_url, name="Large Data Base Query Network Test")
 
     def _nginx_check(locust):
-        call_name = APITasks.__get_labeled_name("Nginx Check")
-        locust.client.post(APITasks.nginx_url, name=call_name)
+        APITasks.post_json_csm_copy(locust, APITasks.nginx_url, name="Nginx Check")
 
 
 
@@ -194,7 +177,7 @@ class APITasks(TaskSet):
         locust.stats.CSV_STATS_INTERVAL_SEC = stat_interval
         config = Config()
         pool_factory = RequestPoolFactory(config, [cls.env])
-        api_base_host = config.get_api_host(cls.env)
+        api_base_host = config.get_api_host(cls.env, node=node)
 
         cls._set_tasks()
         for api_call in cls.api_call_weight.keys():
@@ -295,7 +278,7 @@ class APITasks(TaskSet):
 
 
     @staticmethod
-    def post_json_csm_copy(locust, json_info, url, name=None):
+    def post_json_csm_copy(locust, url, json_info=None, name=None, assume_tcp_packet_loss=False):
         """
         This function assumes that all requests must be under the designated max response time, close after,
         and that the resposne code must be 200
@@ -305,9 +288,44 @@ class APITasks(TaskSet):
         :return:
         """
 
-        header = {"Content-Type": "application/json", "Connection": "close"}
+
+
+        header = {"Connection": "close"}
+        if json_info != None:
+            header.setdefault("Content-Type", "application/json")
         call_name = APITasks.__get_labeled_name(url) if name is None else APITasks.__get_labeled_name(name)
-        locust.client.request("POST", url, name=call_name, data=json.dumps(json_info), headers=header)
+        if assume_tcp_packet_loss:
+            if json_info != None:
+                with locust.client.request("POST", url, name=call_name, data=json.dumps(json_info), headers=header, catch_response=True) as resp:
+                    if resp.locust_request_meta["response_time"] > 1000:
+                        resp.locust_request_meta["name"] = "Connection Packet loss {name}".format(name=resp.locust_request_meta["name"])
+                        resp.success()
+
+                    elif resp.locust_request_meta["response_time"] > 200:
+                        resp.locust_request_meta["name"] = "Packet loss {name}".format(name=resp.locust_request_meta["name"])
+                        resp.success()
+                    else:
+                        resp.success()
+            else:
+                with locust.client.request("POST", url, name=call_name, headers=header, catch_response=True) as resp:
+                    if resp.locust_request_meta["response_time"] > 1000:
+                        resp.locust_request_meta["name"] = "Connection Packet loss {name}".format(
+                            name=resp.locust_request_meta["name"])
+                        resp.success()
+
+                    elif resp.locust_request_meta["response_time"] > 200:
+                        resp.locust_request_meta["name"] = "Packet loss {name}".format(
+                            name=resp.locust_request_meta["name"])
+                        resp.success()
+                    else:
+                        resp.success()
+
+        else:
+            if json_info != None:
+                locust.client.request("POST", url, name=call_name, data=json.dumps(json_info), headers=header)
+            else:
+                locust.client.request("POST", url, name=call_name, headers=header)
+
 
 
 
