@@ -95,19 +95,20 @@ class TestLoadRunnerAPIWrapper(APITest):
         self._setup_manual_test()
         self._start_manuel_test()
         stats = self.load_runner_api_wrapper.get_stats()
-        requests = stats["Total"]["num requests"]
+        requests = stats["num requests"]
         self.assertGreater(requests, 0, "No requests where sent out")
 
+    def test_run_basic_automated_test_case(self):
+        setup, procedure = ("Node User Recordings", "Test Basic")
+        self._setup_and_start_automated_test(setup, procedure)
 
-    # def test_run_automated_test_case(self):
-    #     self.load_runner_api_wrapper.run_automated_test_case("Node User Recordings", "Benchmark Node")
-    #     test_proc = self.config.get_test_procedure("Benchmark Node")
-    #     time_for_test = 0
-    #     for test in test_proc:
-    #         hatch_time = (test["final user count"] - test["init user count"])/test["hatch rate"]
-    #         time_for_test += int(test["time at load"]) + hatch_time
-    #     time.sleep(1.2 * time_for_test)
+    def test_run_multi_stage_automated_test_case(self):
+        setup, procedure = ("Node User Recordings", "Test Level Platue Level Back Down")
+        self._setup_and_start_automated_test(setup, procedure)
+
     #TODO: FINISH
+
+
 
 
 
@@ -132,6 +133,16 @@ class TestLoadRunnerAPIWrapper(APITest):
 
     def _start_manuel_test(self):
         self.load_runner_api_wrapper.start_ramp_up(locust_count=200, hatch_rate=200, first_start=True)
+
+
+    def _setup_and_start_automated_test(self, setup, procedure):
+        self.load_runner_api_wrapper.run_automated_test_case(setup, procedure)
+        test_proc = self.config.get_test_procedure(procedure)
+        time_for_test = 0
+        for test in test_proc:
+            hatch_time = (test["final user count"] - test["init user count"])/test["hatch rate"]
+            time_for_test += int(test["time at load"]) + hatch_time
+        time.sleep(1.2 * time_for_test)
 
     def _kill_test(self):
         self.load_runner_api_wrapper.stop_tests()
@@ -168,6 +179,9 @@ class TestLoadRunnerAPIWrapper(APITest):
     def _assert_automated_test_file(self, file):
         #TODO: create this function
         pass
+
+
+
 
 
 

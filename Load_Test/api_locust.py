@@ -102,22 +102,22 @@ class APITasks(TaskSet):
                     response.success()
 
     def _basic_network(locust):
-        APITasks.post_json_csm_copy(locust, APITasks.basic_network_url, name="Basic Network Test")
+        APITasks.post_json_csm_copy(locust, APITasks.basic_network_url, name="Basic Network Test", assume_tcp_packet_loss=True)
 
 
     def _network_byte_size(locust):
         payload = {"byte_size": "3"} #TODO Make this configurable - ideally by allowing params to be passed in with api_call_weight
-        APITasks.post_json_csm_copy(locust, APITasks.network_byte_size_url, json_info=payload, name="Network Byte Size")
+        APITasks.post_json_csm_copy(locust, APITasks.network_byte_size_url, json_info=payload, name="Network Byte Size", assume_tcp_packet_loss=True)
 
 
     def _small_db(locust):
-        APITasks.post_json_csm_copy(locust, APITasks.small_db_url, name="Small Data Base Query Network Test")
+        APITasks.post_json_csm_copy(locust, APITasks.small_db_url, name="Small Data Base Query Network Test", assume_tcp_packet_loss=True)
 
     def _large_db(locust):
-        APITasks.post_json_csm_copy(locust, APITasks.large_db_url, name="Large Data Base Query Network Test")
+        APITasks.post_json_csm_copy(locust, APITasks.large_db_url, name="Large Data Base Query Network Test", assume_tcp_packet_loss=True)
 
     def _nginx_check(locust):
-        APITasks.post_json_csm_copy(locust, APITasks.nginx_url, name="Nginx Check")
+        APITasks.post_json_csm_copy(locust, APITasks.nginx_url, name="Nginx Check", assume_tcp_packet_loss=True)
 
 
 
