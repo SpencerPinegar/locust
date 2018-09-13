@@ -8,9 +8,22 @@ class TestAPILocust(APITest):
         self._test_undistributed("User Recordings Ribbon", 1, False)
 
 
+    def test_user_recordings_ribbon_route_load_v2(self):
+        self._test_undistributed("User Recordings Ribbon", 2, False)
+
+    def test_user_recordings_ribbon_route_load_v4(self):
+        self._test_undistributed("User Recordings Ribbon", 4, False)
+
 
     def test_user_franchise_ribbon_route_load_v1(self):
         self._test_undistributed("User Franchise Ribbon", 1, False)
+
+
+    def test_user_franchise_ribbon_route_load_v2(self):
+        self._test_undistributed("User Franchise Ribbon", 2, False)
+
+    def test_user_franchise_ribbon_route_load_v4(self):
+        self._test_undistributed("User Franchise Ribbon", 4, False)
 
 
     def test_user_recspace_information_route_load_v1(self):

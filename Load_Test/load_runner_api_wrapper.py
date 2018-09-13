@@ -49,8 +49,14 @@ class LoadRunnerAPIWrapper(LoadRunner):
         else:
             LoadRunnerAPIWrapper.TEST_API_WRAPPER.stop_tests()
 
+
+    @property
+    def is_automated_test(self):
+        return self.automated_test != None
+
     def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config):
         LoadRunner.__init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config)
+        self.automated_test = None
 
 
     def stop_tests(self):
@@ -150,10 +156,14 @@ class LoadRunnerAPIWrapper(LoadRunner):
 
 
     def get_stats(self):
+        default_total = {'99%': 0, '80%': 0, '75%': 0, '90%': 0, '66%': 0, '50%': 0, '100%': 0, 'num requests': 0, '98%': 0}
         dist_stats = self._get_ui_request_distribution_stats()
         info = self._get_ui_info()
-        for api_call in dist_stats.keys():
-            info[api_call].update(dist_stats[api_call])
+        total = dist_stats.pop("Total", default_total)
+        for key, value in total.items():
+            info.setdefault(key, value)
+        info.setdefault("stats", dist_stats)
+        info.pop("state", None)
         return info
 
 
@@ -167,10 +177,8 @@ class LoadRunnerAPIWrapper(LoadRunner):
 
     def run_automated_test_case(self, setup_name, procedure_name):
         self.automated_test = AutomatedTestCase(setup_name, procedure_name,
-                                                LoadRunnerAPIWrapper.Stat_Interval, LoadRunnerAPIWrapper.TEST_API_WRAPPER.setup_manuel_test,
-                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER.stop_tests, LoadRunnerAPIWrapper.TEST_API_WRAPPER.get_stats,
-                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_ramp_up, LoadRunnerAPIWrapper.TEST_API_WRAPPER.reset_stats,
-                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER._users_property_function_wrapper, self.config)
+                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER,
+                                                LoadRunnerAPIWrapper.Stat_Interval)
         self.automated_test.run()
 
 

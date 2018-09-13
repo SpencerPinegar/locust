@@ -5,6 +5,8 @@ from Load_Test.recurring_event_thread import RecurringEventThread
 import os
 import csv
 from requests.exceptions import ConnectionError
+import datetime
+
 
 
 
@@ -32,42 +34,50 @@ class AutomatedTestCase:
     Procedures_File = os.path.join(API_Performance_Dir, "Procedures.yaml")
     Setups_File = os.path.join(API_Performance_Dir, "Setups.yaml")
 
-    def __init__(self, setup_name, procedures_name, stat_interval, setup_method, teardown_method, get_stats_method, ramp_up_method,
-                 reset_stats_method, number_of_users_method, config):
+    def __init__(self, setup_name, procedures_name, api_test_runner, stat_interval):
         """
         Runs an automated testcase based on the testsetup and testprocedures
         :param TestSetup: Test Setup class with all values
         :param TestProceudures: List of TestProcedure Classes
         """
         #TODO make automated test case run in thread so it can access process memory
+        self.name = "{setup}: {procedure} - {date}".format(setup=setup_name, procedure=procedures_name,
+                                                           date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.stat_interval = stat_interval
-        self.setup_test_method = setup_method
-        self.teardown_test_method = teardown_method
-        self.get_stats_method = get_stats_method
-        self.ramp_up_method = ramp_up_method
-        self.reset_stats_method = reset_stats_method
-        self.number_of_users = number_of_users_method
+        self.setup_test_method = api_test_runner.setup_manuel_test
+        self.teardown_test_method = api_test_runner.stop_tests
+        self.get_stats_method = api_test_runner.get_stats
+        self.ramp_up_method = api_test_runner.start_ramp_up
+        self.reset_stats_method = api_test_runner.reset_stats
+        self.number_of_users = api_test_runner._users_property_function_wrapper
 
         self.started_test_time = time()
-        self.setup = AutomatedTestCase.TestSetup.from_file(config, setup_name)
-        self.procedures = AutomatedTestCase.TestProcedure.from_file(config, procedures_name)
+        self.setup = AutomatedTestCase.TestSetup.from_file(api_test_runner.config, setup_name)
+        self.procedures = AutomatedTestCase.TestProcedure.from_file(api_test_runner.config, procedures_name)
         self.current_procedure = None
         self.started_procedure_time = None
         self.current_procedure_number = 0
-        self.stat_retriever = RecurringEventThread(stat_interval, self.__handle_stats)
+        self.old_stats = None
 
 
 
 
-
+    def stats(self):
+        old_stats = self.old_stats
+        new_stats = self.get_stats_method()
+        proc_time = time() - self.started_procedure_time
+        group = self.current_procedure.group_name
+        new_stats["proc time"] = proc_time
+        new_stats["group"] = group
+        new_stats["procedure num"] = self.current_procedure_number
+        new_stats["name"] = self.name
+        if old_stats != None:
+            pass
+            #TODO decide if we want to only calculate stats for that time stamp
+        return new_stats
 
     @property
     def ramped_up(self):
-        print("LOLOLOL")
-        print("lo,")
-        print("lolol")
-        print("lo,o,lolol")
-        print("hey")
         if int(self.number_of_users()) < int(self.current_procedure.final_users):
             return False
         else:
@@ -75,43 +85,37 @@ class AutomatedTestCase:
 
 
     def __handle_procedures(self):
-        self.__handle_procedure(True)
+        stat_retriever = RecurringEventThread(self.stat_interval, self.stats)
+        self.__handle_procedure(stat_retriever, True)
         while self.procedures:
-            self.__handle_procedure(False)
-        self.stat_retriever.stop()
+            self.__handle_procedure(stat_retriever, False)
+        stat_retriever.stop()
         self.teardown_test_method()
 
 
 
 
 
-    def __handle_procedure(self, initial=False):
+    def __handle_procedure(self, stat_retriever, initial=False):
         self.current_procedure_number += 1
         self.current_procedure = self.procedures.pop(0)
         self.started_procedure_time = time()
         if not initial:
             if self.current_procedure.fresh_stats:
+                self.old_stats = None
                 self.reset_stats_method()
-            assert self.number_of_users == self.current_procedure.init_users
-        self.ramp_up_method(self.current_procedure.final_users, self.current_procedure.hatch_rate)
-        self.stat_retriever.start()
+            assert int(self.number_of_users()) == int(self.current_procedure.init_users)
+        self.ramp_up_method(self.current_procedure.final_users, self.current_procedure.hatch_rate, first_start=False)
+        stat_retriever.start()
         sleep(self.current_procedure.hatch_time_s)
         while not self.ramped_up:
-            sleep(.5)
+            sleep(.002)
         if self.current_procedure.segregate:
+            self.old_stats = None
             self.reset_stats_method()
         sleep(self.current_procedure.time_period)
 
 
-    def __handle_stats(self):
-        stats = self.get_stats_method()
-        proc_time = time() - self.started_procedure_time
-        group = self.current_procedure.group_name
-        stats["proc time"] = proc_time
-        stats["group"] = group
-        stats["procedure num"] = self.current_procedure_number
-        file = os.path.join(AutomatedTestCase.API_Performance_Dir, "testerzzzzz")
-        AutomatedTestCase.__dict_to_csv(stats, file)
 
     @staticmethod
     def __dict_to_csv(scraped_values_dict, file_path):
@@ -130,11 +134,10 @@ class AutomatedTestCase:
         self.setup_test_method(self.setup.api_call, self.setup.env, self.setup.node, self.setup.version, self.setup.n_min,
                      self.setup.n_max)
         self.started_test_time = time()
-        self.__handle_procedures()
-        # test_controller = threading.Thread(name='Aut', target=self.__handle_procedures)
-        # test_controller.setDaemon(True)
-        # test_controller.start()
-
+        test_controller = threading.Thread(name='Background Test', target=self.__handle_procedures)
+        test_controller.setDaemon(True)
+        test_controller.start()
+        return test_controller
 
 
 
@@ -178,7 +181,7 @@ class AutomatedTestCase:
             self.init_users = init_users
             self.final_users = final_users
             self.hatch_rate = hatch_rate
-            self.hatch_time_s = final_users - init_users / hatch_rate if final_users > init_users and hatch_rate > 0 else 0
+            self.hatch_time_s = (final_users - init_users) / hatch_rate if final_users > init_users and hatch_rate > 0 else 0
             self.time_period = time_period_s
             self.segregate = segregate
             self.fresh_stats = fresh_stats
@@ -194,7 +197,7 @@ class AutomatedTestCase:
                 init_users = proc["init user count"]
                 final_user_count = proc["final user count"]
                 hatch_rate = proc["hatch rate"]
-                time_period = proc["time at load"]
+                time_period = float(proc["time at load"]) * 60
                 fresh_stats = proc["fresh procedure stats"]
                 segregate = proc["ramp up stats seperate"]
                 test_proc = AutomatedTestCase.TestProcedure(name, init_users, final_user_count, hatch_rate, time_period, segregate,

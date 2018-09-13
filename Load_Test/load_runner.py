@@ -80,7 +80,7 @@ class LoadRunner:
         self._last_boot_time = time.time()
         self._users = -1
         self._hatch_rate = -1
-        self.automated_test = None
+
 
     @property
     def users(self):
@@ -318,19 +318,20 @@ class LoadRunner:
         ui_info.setdefault("fail_ratio", site_data["fail_ratio"])
         ui_info.setdefault("user_count", site_data["user_count"])
         ui_info.setdefault("state", site_data["state"])
+
         try:
             slaves_count = len(site_data["slaves"])
         except KeyError as e:
             slaves_count = 0
         ui_info.setdefault("slaves", slaves_count)
-        for url in site_data["stats"]:
-            name = url["name"]
-            ui_info.setdefault(name, { "avg_content_length": url["avg_content_length"],
-                                       "rps": url["current_rps"],
-                                       "failures": url["num_failures"],
-                                       "requests": url["num_requests"]
-                                       }
-                               )
+        #for url in site_data["stats"]:
+            # name = url["name"]
+            # ui_info.setdefault(name, { "avg_content_length": url["avg_content_length"],
+            #                            "rps": url["current_rps"],
+            #                            "failures": url["num_failures"],
+            #                            "requests": url["num_requests"]
+            #                            }
+            #                    )
         return ui_info
 
     def _ui_state(self):
@@ -445,7 +446,7 @@ class LoadRunner:
             idle_time_percentage -= percentage_per_cpu
             available_cores_cpu += 1
 
-        load_avg = math.ceil(max(os.getloadavg()[:2]) + LoadRunner.assumed_load_average_added)
+        load_avg = math.ceil(max(os.getloadavg()[:1]) + LoadRunner.assumed_load_average_added)
         available_cores_load_avg = physical_cores - load_avg if physical_cores > load_avg else 0
 
         available_cores = min(available_cores_cpu, available_cores_load_avg)

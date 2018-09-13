@@ -84,6 +84,7 @@ Procedures:
       ramp up stats seperate: false
 
 
+
   Node Soak:
     -
       init user count: 0
@@ -92,6 +93,33 @@ Procedures:
       time at load:
       fresh procedure stats: false
       ramp up stats seperate: true
+
+  VIP Soak:
+    -
+      init user count: 0
+      final user count: 600
+      time at load:
+      fresh procedure stats: false
+      ramp up stats seperate: true
+
+
+  Node Fail Over:
+    -
+      init user count: 0
+      final user count: 1000
+      hatch rate: .5
+      time at load: 0
+      fresh procedure stats: false
+
+
+
+  VIP Fail Over:
+    -
+      init user count: 0
+      final user count: 3000
+      hatch rate: .5
+      time at load: 0
+      fresh procedure stats: false
 
 
 
@@ -140,25 +168,25 @@ Procedures:
 DataBase Settings:
   Environments:
     DEV1:
-      Host: d-gp2-dbp60.imovetv.com
+      Host: d-gp2-dbpgdvr1.imovetv.com
       Port: 5432
     DEV2:
-      Host: d-gp2-dbp63.imovetv.com
+      Host: d-gp2-dbpgdvr2.imovetv.com
       Port: 5432
     DEV3:
-      Host: d-gp2-dbp59.imovetv.com
+      Host: d-gp2-dbpgdvr3.imovetv.com
       Port: 5432
     QA:
-      Host: q-gp2-dbp7.imovetv.com
+      Host: q-gp2-dbpgdvr1.imovetv.com
       Port: 9999
     BETA:
-      Host: b-cg17-dbp7.b.movetv.com
+      Host: b-gp2-dbpgdvr1.movetv.com
       Port: 9999
     BETA2:
-      Host: b-gp2-dbp36.imovetv.com
+      Host: b-gp2-dbpgdvr2.imovetv.com
       Port: 9999
     PROD:
-      Host: p-dc10-dbp7.imovetv.com
+      Host: p-dc10-dbpgdvr1.imovetv.com
       Port: 9999
   Credentials:
     DataBase Name: dvrcloud
@@ -201,8 +229,8 @@ RecAPI Settings:
     User Recordings Ribbon:
       Route: user-recordings
       Versions: [1, 2, 4, 5]
-      Normal Min: 40
-      Normal Max: 50
+      Normal Min: 1
+      Normal Max: 5
       List: false
       Version 1:
         Required Fields:

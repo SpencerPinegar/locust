@@ -42,9 +42,10 @@ class TestReadOnlyRequestPool(APITest):
         response = requests.post(url, json=json_post)
         self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
         #this test wont be valid unless we have a 200 response
-        response_length = len(json.loads(response.content)["rs_recordings"])
+        recordings = json.loads(response.content)["rs_recordings"]
+        rec_count = self._recording_count(recordings)
         min_length, max_length = self.config.get_api_route_normal_min_max(route_name)
-        self.assertTrue(min_length <= response_length <= max_length, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+        self.assertTrue(min_length <= rec_count <= max_length, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
 
     def test_user_recordings_ribbon_v2(self):
@@ -60,12 +61,7 @@ class TestReadOnlyRequestPool(APITest):
         recordings = json.loads(response.content)["rs_recordings"]
 
         min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-        rec_count = 0
-        for rec in recordings:
-            try:
-                rec_count += int(rec["num_episodes"])
-            except KeyError as e:
-                rec_count += 1
+        rec_count = self._recording_count(recordings)
         self.assertTrue((min_len <= rec_count <= max_len), TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
     def test_user_recordings_ribbon_v4(self):
@@ -79,12 +75,7 @@ class TestReadOnlyRequestPool(APITest):
         self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
         # this test wont be valid unless we have a 200 response
         recordings = json.loads(response.content)["rs_recordings"]
-        rec_count = 0
-        for rec in recordings:
-            try:
-                rec_count += int(rec["num_episodes"])
-            except KeyError as e:
-                rec_count += 1
+        rec_count = self._recording_count(recordings)
         min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
         self.assertTrue(min_len <= rec_count <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
@@ -98,9 +89,10 @@ class TestReadOnlyRequestPool(APITest):
         for json_post in datapool.normal_pool:
             response = requests.post(url, json=json_post)
             self.assertEqual(200, response.status_code, TestReadOnlyRequestPool)
-            resp_len = len(json.loads(response.content)["rs_recordings"])
+            recordings = json.loads(response.content)["rs_recordings"]
+            rec_count = self._recording_count(recordings)
             min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-            self.assertTrue(min_len <= resp_len <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+            self.assertTrue(min_len <= rec_count <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
 
     # No Edits done on this API Call -- Good on Data
@@ -114,11 +106,10 @@ class TestReadOnlyRequestPool(APITest):
         response = requests.post(url, json=json_post_post)
         self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
         # this test wont be valid unless we have a 200 response
-        resp_len = 0
-        for season in json.loads(response.content)['seasons']:
-            resp_len += len(season["episodes"])
+        seasons = json.loads(response.content)["seasons"]
+        episodes = self._franchise_count(seasons)
         min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-        self.assertTrue(min_len <= resp_len <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+        self.assertTrue(min_len <= episodes <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
 
     def test_user_franchise_ribbon_v4(self):
@@ -130,11 +121,10 @@ class TestReadOnlyRequestPool(APITest):
         response = requests.post(url, json=json_post)
         self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
         # this test wont be valid unless we have a 200 response
-        resp_len = 0
-        for season in json.loads(response.content)['seasons']:
-            resp_len += len(season["episodes"])
+        seasons = json.loads(response.content)["seasons"]
+        episode_count = self._franchise_count(seasons)
         min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-        self.assertTrue(min_len <= resp_len <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+        self.assertTrue(min_len <= episode_count <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
     def test_user_franchise_all_normal_data(self):
         route_name, version = ("User Franchise Ribbon", 1)
@@ -144,11 +134,10 @@ class TestReadOnlyRequestPool(APITest):
         for json_post in datapool.normal_pool:
             response = requests.post(url, json=json_post)
             self.assertEqual(200, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
-            resp_len = 0
-            for season in json.loads(response.content)['seasons']:
-                resp_len += len(season["episodes"])
+            seasons = json.loads(response.content)["seasons"]
+            episode_count = self._franchise_count(seasons)
             min_len, max_len = self.config.get_api_route_normal_min_max(route_name)
-            self.assertTrue(min_len <= resp_len <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
+            self.assertTrue(min_len <= episode_count <= max_len, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
     #No Edits done on this API Call -- Good on Data
     def test_user_recspace_information_v1(self):
@@ -211,6 +200,21 @@ class TestReadOnlyRequestPool(APITest):
             min_rules, max_rules = self.config.get_api_route_normal_min_max(route_name)
             self.assertTrue(min_rules <= rule_amount <= max_rules, TestReadOnlyRequestPool.Non_Normal_Length_Mssg)
 
+
+    def _recording_count(self, recordings):
+        rec_count = 0
+        for rec in recordings:
+            try:
+                rec_count += int(rec["num_episodes"])
+            except KeyError as e:
+                rec_count += 1
+        return rec_count
+
+    def _franchise_count(self, franchise_seasons):
+        resp_len = 0
+        for season in franchise_seasons:
+            resp_len += len(season["episodes"])
+        return resp_len
 
 class TestTwoStateRequestPool(APITest):
 

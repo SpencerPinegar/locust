@@ -34,49 +34,49 @@ class APITasks(TaskSet):
 
     def _user_recordings_ribbon(locust):
         json_data = APITasks.user_recordings_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.urr_url, json_info=json_data, name="User Recordings Ribbon")
+        APITasks.post_json_csm_copy(locust, APITasks.urr_url, json_info=json_data)
 
 
 
     def _user_franchise_ribbon(locust):
         json_data = APITasks.user_franchise_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.ufr_url, json_info=json_data, name ="User Franchise Ribbon")
+        APITasks.post_json_csm_copy(locust, APITasks.ufr_url, json_info=json_data)
 
 
 
     def _user_recspace_information(locust):
         json_data = APITasks.user_recspace_info_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.uri_url, json_info=json_data, name="User Recspace Info")
+        APITasks.post_json_csm_copy(locust, APITasks.uri_url, json_info=json_data)
 
 
 
     def _update_user_settings(locust):
         json_data = APITasks.update_user_settings_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.uus_url, json_info=json_data, name="Update User Settings")
+        APITasks.post_json_csm_copy(locust, APITasks.uus_url, json_info=json_data)
 
 
 
     def _protect_recordings(locust):
         json_data = APITasks.protect_recordings_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.pr_url, json_info=json_data, name="Protect Recordings")
+        APITasks.post_json_csm_copy(locust, APITasks.pr_url, json_info=json_data)
 
 
 
     def _mark_watched(locust):
         json_data = APITasks.marked_watched_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.mw_url, json_info=json_data, name="Mark Watched")
+        APITasks.post_json_csm_copy(locust, APITasks.mw_url, json_info=json_data)
 
 
 
     def _update_user_rules(locust):
         json_data = APITasks.update_rules_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.ur_url, json_info=json_data, name="Update Rules")
+        APITasks.post_json_csm_copy(locust, APITasks.ur_url, json_info=json_data)
 
 
 
     def _list_user_rules(locust):
         json_data = APITasks.list_rules_pool.get_json()
-        APITasks.post_json_csm_copy(locust, APITasks.lr_url, json_info=json_data, name="List Rules")
+        APITasks.post_json_csm_copy(locust, APITasks.lr_url, json_info=json_data)
 
 
     def _nothing(self):
