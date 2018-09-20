@@ -1,5 +1,16 @@
 SQL_ROUTES_STATEMENTS = {
 
+    "Playback": """
+                                SELECT
+                                r.playback_qvt as QVT
+                                FROM rsstuff_rsrecording r
+                                WHERE r.playable = TRUE 
+                                AND r.playback_qvt LIKE '%{host_num}%'
+                                AND r.health_percent = 100                                
+                                AND r.actual_end < now() 
+    
+    """,
+
     "User Recordings Ribbon": """
                                 SELECT
                                 u.{arg1}

@@ -110,6 +110,10 @@ class RequestPoolFactory:
         return pool, route
 
 
+    def get_playback_recording(self):
+        route_name = "Playback"
+        
+
     def get_redundant_ts_segment_urls(self, env, size, **kwargs):
         route_name = "Redundant Ts Segment"
 
