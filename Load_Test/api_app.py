@@ -1,8 +1,8 @@
 from flask import Flask, request, jsonify
 from flask_jsonrpc import JSONRPC
-from Load_Test import LoadRunnerAPIWrapper
+from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
 from flask_cors import cross_origin, CORS
-
+from Load_Test.Misc.utils import force_route_version_to_ints
 from Load_Test.exceptions import NeedExtensionArgument
 
 
@@ -30,31 +30,24 @@ def thread_webAPP(extension, **kwargs):
         return_value = LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
         return return_value
 
-    @jsonrpc.method("isSetup() -> dict")
-    def is_setup():
-        return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_setup()
 
-    @jsonrpc.method(
-        "setupManualTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int) -> dict",
-        validate=True)
-    def setup_manual_test(api_call_weight, env, node, version, n_min, n_max):
 
-        LoadRunnerAPIWrapper.TEST_API_WRAPPER.setup_manuel_test(api_call_weight, env, node, version, n_min, n_max)
-        return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_setup()
+    @jsonrpc.method("startCustomTest(api_call_weight=dict, env=str, node=int, max_request=bool, num_users=int, "
+                    "hatch_rate=float, stat_interval=int, assume_tcp=bool, bin_by_resp=bool) -> dict")
+    def start_custom_test(api_call_weight, env, node, max_request, num_users, hatch_rate, stat_interval=None,
+                          assume_tcp=False, bin_by_resp=False):
+        api_call_weight = force_route_version_to_ints(api_call_weight)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER.custom_api_test(api_call_weight, env, node, max_request, stat_interval=stat_interval,
+                                                              assume_tcp=assume_tcp, bin_by_resp=bin_by_resp)
 
-    @jsonrpc.method("startManualTest(num_users=int, hatch_rate=float) -> dict")
-    def start_manuel_test(num_users, hatch_rate):
-        LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_ramp_up(num_users, hatch_rate, True)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER.start_ramp_up(num_users, hatch_rate, first_start=True)
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
 
 
-    @jsonrpc.method("startBenchmarkTest(api_call_weight=dict, env=str, node=int, version=int, n_min=int, n_max=int,"
-                    "num_clients=int, hatch_rate=float, run_time=str, reset_stats=bool) -> dict", validate=True)
-    def start_benchmark_test(api_call_weight, env, node, version, n_min, n_max, num_clients, hatch_rate, run_time,
-                             reset_stats):
-        LoadRunnerAPIWrapper.TEST_API_WRAPPER.setup_and_start_benchmark_test(api_call_weight, env, node, version, n_min,
-                                                                             n_max, num_clients, hatch_rate,
-                                                                             run_time, reset_stats)
+    @jsonrpc.method("startAutomatedTest(setup_name=str, procedure_name=str) -> dict", validate=True)
+    def start_automated_test(setup_name, procedure_name):
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER.run_automated_test_case(setup_name, procedure_name)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER.automated_test.run()
         return LoadRunnerAPIWrapper.TEST_API_WRAPPER.is_running()
 
     @jsonrpc.method("shutdown()")
@@ -69,6 +62,12 @@ def thread_webAPP(extension, **kwargs):
     def test():
         data = request.get_data()
         print(data)
+
+
+
+
+
+
 
     def add_cors_headers(response):
         response.headers['Access-Control-Allow-Origin'] = '*'

@@ -1,5 +1,5 @@
 from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
-from Load_Test.api_test import APITest
+from Load_Test.Misc.locust_test import LocustTest
 import random
 import backoff
 import os
@@ -8,14 +8,15 @@ import json
 from multiprocessing import Process
 import requests
 from main import main_func
+from Load_Test.load_server_client import LoadServerClient
 
-class TestAPIApp(APITest):
+class TestAPIApp(LocustTest):
 
     def setUp(self):
         super(TestAPIApp, self).setUp()
         self.api_host_info = LoadRunnerAPIWrapper.web_api_host_info
         self.extension = LoadRunnerAPIWrapper.Extension
-        self.server = Process(target=main_func, args=(True,))
+        self.server = Process(target=main_func, args=(True, LoadServerClient.local))
         self.server.start()
 
 
@@ -37,108 +38,59 @@ class TestAPIApp(APITest):
             response = self.__remote_api_call("ping", {})
 
 
-    def test_is_setup_not_running_not_setup(self):
-        self._assert_not_setup(None)
 
-
-
-    def test_is_setup_manuel_setup_not_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_is_setup(LoadRunnerAPIWrapper.Setup_Manuel_Test_Msg)
-
-
-    def test_is_setup_manuel_setup_and_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_start_manuel_test()
-        self._assert_is_running(LoadRunnerAPIWrapper.Current_Manuel_Test_Msg)
-        self._assert_not_setup(LoadRunnerAPIWrapper.Current_Manuel_Test_Msg)
-
-
-
-    def test_is_setup_setup_and_run_benchmark(self):
-        self._assert_setup_and_run_benchmark()
-        self._assert_not_setup(LoadRunnerAPIWrapper.Current_Benchmark_Test_Msg)
-
-    def test_is_running_not_setup_not_running(self):
+    def test_is_running_not_running(self):
         self._assert_not_running()
 
 
-    def test_is_running_manuel_setup_not_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_not_running()
+    def test_is_running_custom_running(self):
+        self._assert_start_custom_test()
+        self._assert_is_running()
+
+    def test_is_running_automated_running(self):
+        self._assert_start_automated_test()
+        self._assert_is_running()
 
 
-    def test_is_running_manuel_setup_and_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_start_manuel_test()
-        self._assert_is_running(LoadRunnerAPIWrapper.Current_Manuel_Test_Msg)
-
-    def test_is_running_benchmark_setup_and_running(self):
-        self._assert_setup_and_run_benchmark()
-        self._assert_is_running(LoadRunnerAPIWrapper.Current_Benchmark_Test_Msg)
-
-    def test_start_manuel_manuel_test_not_setup_not_running(self):
-        self._assert_cant_start_unsetup_manuel()
-
-    def test_start_manuel_manuel_test_setup_not_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_start_manuel_test()
+    def test_start_custom_test_custom_test_running(self):
+        self._assert_start_custom_test()
+        self._assert_failed_custom_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Custom_Test_Msg)
 
 
-    def test_start_manuel_manuel_test_setup_and_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_start_manuel_test()
-        self._assert_failed_manuel_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Manuel_Test_Msg)
+    def test_start_custom_test_automated_test_running(self):
+        self._assert_start_automated_test()
+        self._assert_failed_custom_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Automated_Test_Msg)
 
+    def test_start_automated_test_custom_test_running(self):
+        self._assert_start_custom_test()
+        self._assert_failed_automated_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Custom_Test_Msg)
 
-    def test_start_manuel_benchmark_running(self):
-        self._assert_setup_and_run_benchmark()
-        self._assert_failed_manuel_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Benchmark_Test_Msg)
-
-    def test_start_benchmark_not_setup_not_running(self):
-        self._assert_setup_and_run_benchmark()
-
-    def test_start_benchmark_manuel_setup_not_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_setup_and_run_benchmark()
-
-    def test_start_benchmark_manuel_setup_and_running(self):
-        self._assert_setup_manuel_test()
-        self._assert_start_manuel_test()
-        self._assert_failed_benchmark_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Manuel_Test_Msg)
-
-    def test_start_benchmark_benchmark_running(self):
-        self._assert_setup_and_run_benchmark()
-        self._assert_failed_benchmark_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Benchmark_Test_Msg)
+    def test_start_automated_test_automated_test_running(self):
+        self._assert_start_automated_test()
+        self._assert_failed_automated_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Automated_Test_Msg)
 
 
     #INVALID PARAMS
 
-    def test_start_manuel_invalid_api_routes(self):
-        self._assert_manuel_setup_incorrect_params_test_run(u"Invalid is not a valid route", api_call={"Invalid": 12})
+    def test_start_custom_invalid_api_routes(self):
+        self._assert_custom_start_incorrect_params_test_run(u"Invalid is not a valid route", api_call={"Invalid": {1: None}})
 
-    def test_start_benchmark_invalid_api_routes(self):
-        self._assert_benchmark_setup_incorrect_params_test_run(u"Invalid is not a valid route", api_call={"Invalid": 12})
 
-    def test_start_manuel_invalid_version(self):
+    def test_start_custom_invalid_version(self):
         route = self.api_call.keys()[0]
-        self._assert_manuel_setup_incorrect_params_test_run(u"-1 is not a valid version for route {route}".format(route=route), version=-1)
+        self._assert_custom_start_incorrect_params_test_run(u"-1 is not a valid version for route {route}".format(route=route), api_call={route: {-1: "Irrelevant"}})
 
-    def test_start_benchmark_invalid_version(self):
-        route = self.api_call.keys()[0]
-        self._assert_benchmark_setup_incorrect_params_test_run(u"-1 is not a valid version for route {route}".format(route=route), version=-1)
+    def test_start_custom_invalid_env(self):
+        self._assert_custom_start_incorrect_params_test_run(u"INVALID is not a valid Env", env="INVALID")
 
-    def test_start_manuel_invalid_env(self):
-        self._assert_manuel_setup_incorrect_params_test_run(u"INVALID is not a valid Env", env="INVALID")
+    def test_start_custom_invalid_node(self):
+        self._assert_custom_start_incorrect_params_test_run(u"{env} does not have node -1".format(env=self.env), node=-1)
 
-    def test_start_benchmark_invalid_env(self):
-        self._assert_benchmark_setup_incorrect_params_test_run(u"INVALID is not a valid Env", env="INVALID")
+    def test_start_benchmark_invalid_procedure(self):
+        self._assert_automated_start_incorrect_params_test_run(u"{env} does not have node -1".format(env=self.env), node=-1)
 
-    def test_start_manuel_invalid_node(self):
-        self._assert_manuel_setup_incorrect_params_test_run(u"{env} does not have node -1".format(env=self.env), node=-1)
-
-    def test_start_benchmark_invalid_node(self):
-        self._assert_benchmark_setup_incorrect_params_test_run(u"{env} does not have node -1".format(env=self.env), node=-1)
+    def test_start_automated_invalid_setup(self):
+        pass
 
 
 
@@ -147,95 +99,71 @@ class TestAPIApp(APITest):
 
 
 
-
-
-
-    def _assert_manuel_setup_incorrect_params_test_run(self, test_msg, **kwargs):
-        expected_params = self.__get_setup_manuel_params(**kwargs)
-        test_id, response = self.__remote_api_call("setupManualTest", expected_params)
+    def _assert_automated_start_incorrect_params_test_run(self, test_msg, **kwargs):
+        expected_params = self.__get_start_automated_params(**kwargs)
+        test_id, response = self.__remote_api_call("startAutomatedTest", expected_params)
         expected_error = {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'}
         self.__assert_error(response, test_id, expected_error)
 
 
-    def _assert_benchmark_setup_incorrect_params_test_run(self, test_msg, **kwargs):
-        expected_params = self.__get_benchmark_test_params(**kwargs)
-        test_id, response = self.__remote_api_call("startBenchmarkTest", expected_params)
+    def _assert_custom_start_incorrect_params_test_run(self, test_msg, **kwargs):
+        expected_params = self.__get_start_custom_params(**kwargs)
+        test_id, response = self.__remote_api_call("startCustomTest", expected_params)
         expected_error = {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'}
         self.__assert_error(response, test_id, expected_error)
 
 
-    def _assert_failed_manuel_start_other_test_already_running(self, test_msg):
-
-        expected_params = self.__get_start_manuel_params()
-        the_id, response = self.__remote_api_call("startManualTest", expected_params)
+    def _assert_failed_custom_start_other_test_already_running(self, test_msg):
+        expected_params = self.__get_start_custom_params()
+        the_id, response = self.__remote_api_call("startCustomTest", expected_params)
         self.__assert_error(response, the_id, {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'})
 
-    def _assert_failed_benchmark_start_other_test_already_running(self, test_msg):
-        expected_params = self.__get_benchmark_test_params()
-        call_id, response = self.__remote_api_call("startBenchmarkTest", expected_params)
+    def _assert_failed_automated_start_other_test_already_running(self, test_msg):
+        expected_params = self.__get_start_automated_params()
+        call_id, response = self.__remote_api_call("startAutomatedTest", expected_params)
         self.__assert_error(response, call_id, {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'})
 
-    def _assert_cant_start_unsetup_manuel(self):
-        expected_params = self.__get_start_manuel_params()
-        call_id, response = self.__remote_api_call("startManualTest", expected_params)
-        self.__assert_error(response, call_id,
-                            {u'message': u'OtherError: The web UI has not been set up yet', u'code': 500,
-                             u'data': None, u'name': u'OtherError'})
 
-    def _assert_setup_and_run_benchmark(self, **kwargs):
-        expected_params = self.__get_benchmark_test_params(**kwargs)
-        call_id, response = self.__remote_api_call("startBenchmarkTest", expected_params)
-        self.__assert_success(response, call_id, [True, LoadRunnerAPIWrapper.Current_Benchmark_Test_Msg])
+    def _assert_start_automated_test(self, **kwargs):
+        expected_params = self.__get_start_automated_params(**kwargs)
+        call_id, response = self.__remote_api_call("startAutomatedTest", expected_params)
+        self.__assert_success(response, call_id, [True, LoadRunnerAPIWrapper.Current_Automated_Test_Msg])
 
 
     def _assert_stop_test(self):
         try:
             call_id, respone = self.__remote_api_call("stopTest", {})
-            self.__assert_success(respone, call_id, [False, None])
-        except ConnectionError as e:
+            self.__assert_success(respone, call_id, False)
+        except ConnectionError:
             pass
 
 
-    def _assert_setup_manuel_test(self):
-        expected_params =self.__get_setup_manuel_params()
-        call_id, response = self.__remote_api_call("setupManualTest", expected_params)
-        self.__assert_success(response, call_id, [True, LoadRunnerAPIWrapper.Setup_Manuel_Test_Msg])
-
-
-    def _assert_start_manuel_test(self):
-        expected_params = self.__get_start_manuel_params()
-        call_id, respone = self.__remote_api_call("startManualTest", expected_params)
-        self.__assert_success(respone, call_id, [True, LoadRunnerAPIWrapper.Current_Manuel_Test_Msg])
+    def _assert_start_custom_test(self):
+        expected_params = self.__get_start_custom_params()
+        call_id, respone = self.__remote_api_call("startCustomTest", expected_params)
+        self.__assert_success(respone, call_id, True)
 
 
 
-    def _assert_is_running(self, Type_MSG):
+    def _assert_is_running(self):
         call_id, response = self.__remote_api_call("isRunning", {})
-        self.__assert_success(response, call_id, [True, Type_MSG])
+        self.__assert_success(response, call_id, True)
 
 
 
     def _assert_not_running(self):
         call_id, response = self.__remote_api_call("isRunning", {})
-        self.__assert_success(response, call_id, [False, None])
-
-    def _assert_is_setup(self, Type_MSG):
-        call_id, response = self.__remote_api_call("isSetup", {})
-        self.__assert_success(response, call_id, [True, Type_MSG])
+        self.__assert_success(response, call_id, False)
 
 
-
-    def _assert_not_setup(self, Type_MSG):
-        call_id, response = self.__remote_api_call("isSetup", {})
-        self.__assert_success(response, call_id, [False, Type_MSG])
 
 
 
@@ -259,45 +187,41 @@ class TestAPIApp(APITest):
 
 
 
-    def __get_benchmark_test_params(self, **kwargs):
-        expected_params = self.__get_setup_manuel_params(**kwargs)
+    def __get_start_automated_params(self, **kwargs):
+        setup_name     = kwargs["setup_name"] if "setup_name" in kwargs.keys() else self.setup_name
+        procedure_name = kwargs["procedure_name"] if "procedure_name" in kwargs.keys() else self.procedure_name
 
-        n_clients   = kwargs["clients"] if "clients" in kwargs.keys() else self.n_clients
-        hatch_rate  = kwargs["hatch_rate"] if "hatch_rate" in kwargs.keys() else self.hatch_rate
-        run_time    = kwargs["run_time"] if "run_time" in kwargs.keys() else self.time
-        reset_stats = kwargs["reset_stats"] if "reset_stats" in kwargs.keys() else False
-
-        expected_params.setdefault("num_clients", n_clients)
-        expected_params.setdefault("hatch_rate", hatch_rate)
-        expected_params.setdefault("run_time", run_time)
-        expected_params.setdefault("reset_stats", reset_stats)
+        expected_params = {
+            "setup_name": setup_name,
+            "procedure_name": procedure_name
+        }
         return expected_params
 
-    def __get_setup_manuel_params(self, **kwargs):
+
+
+
+    def __get_start_custom_params(self, **kwargs):
         api_call = kwargs["api_call"] if "api_call" in kwargs.keys() else self.api_call
         env = kwargs["env"] if "env" in kwargs.keys() else self.env
         node = kwargs["node"] if "node" in kwargs.keys() else self.node
-        version = kwargs["version"] if "version" in kwargs.keys() else self.version
-        n_min = kwargs["min"] if "min" in kwargs.keys() else self.n_min
-        n_max = kwargs["max"] if "max" in kwargs.keys() else self.n_max
+        max_request = kwargs["max_request"] if "max_request" in kwargs.keys() else self.max_request
+        n_clients = kwargs["num_users"] if "num_users" in kwargs.keys() else self.n_clients
+        hatch_rate = kwargs["hatch_rate"] if "hatch_rate" in kwargs.keys() else self.hatch_rate
+        stat_interval = kwargs["stat_interval"] if "stat_interval" in kwargs.keys() else LoadRunnerAPIWrapper.Stat_Interval
+        assume_tcp = kwargs["assume_tcp"] if "assume_tcp" in kwargs.keys() else False
+        bin_by_resp = kwargs["bin_by_resp"] if "bin_by_resp" in kwargs.keys() else False
         expected_params = {
             "api_call_weight": api_call,
             "env": env,
             "node": node,
-            "version": version,
-            "n_min": n_min,
-            "n_max": n_max
-        }
-        return expected_params
-
-
-    def __get_start_manuel_params(self, **kwargs):
-        n_clients = kwargs["clients"] if "clients" in kwargs.keys() else self.n_clients
-        hatch_rate = kwargs["hatch_rate"] if "hatch_rate" in kwargs.keys() else self.hatch_rate
-        expected_params = {
+            "max_request": max_request,
             "num_users": n_clients,
-            "hatch_rate": hatch_rate
+            "hatch_rate": hatch_rate,
+            "stat_interval": stat_interval,
+            "assume_tcp": assume_tcp,
+            "bin_by_resp": bin_by_resp
         }
+
         return expected_params
 
 

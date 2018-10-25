@@ -37,6 +37,40 @@ Setups:
 
 Procedures:
 
+
+  VIP To Failure:
+    -
+      init user count: 0
+      final user count: 800
+      hatch rate: 40
+      time at load: 0
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 800
+      final user count: 2000
+      hatch rate: 1
+      time at load: 0
+      fresh procedure stats: false
+      ramp up stats seperate: false
+
+  Node To Failure:
+    -
+      init user count: 0
+      final user count: 150
+      hatch rate: 8
+      time at load: 0
+      fresh procedure stats: false
+      ramp up stats seperate: false
+    -
+      init user count: 150
+      final user count: 500
+      hatch rate: .333
+      time at load: 0
+      fresh procedure stats: false
+      ramp up stats seperate: false
+
+
   Node Benchmark:
     -
       init user count: 0
@@ -178,16 +212,14 @@ DataBase Settings:
       Port: 5432
     QA:
       Host: q-gp2-dbpgdvr1.imovetv.com
-      Port: 9999
+      Port: 5432
     BETA:
-      Host: b-gp2-dbpgdvr1.movetv.com
-      Port: 9999
+      Host: b-gp2-dbpgdvr1.imovetv.com
+      Port: 5432
     BETA2:
       Host: b-gp2-dbpgdvr2.imovetv.com
-      Port: 9999
-    PROD:
-      Host: p-dc10-dbpgdvr1.imovetv.com
-      Port: 9999
+      Port: 5432
+
   Credentials:
     DataBase Name: dvrcloud
     DataBase Username: dvrcloud
@@ -474,9 +506,20 @@ RecAPI Settings:
     - Redundant Ts Segment
     - Basic Network
     - Network Byte Size
-    - Small DB
-    - Large DB
+    - Small Db
+    - Large Db
     - Nginx Check
+
+Playback Settings:
+  Playback Routes:
+    - Playback
+    - Top N Playback
+
+  Playback Players:
+    - HLS
+    - DASH
+    - QMX
+
 
 
 

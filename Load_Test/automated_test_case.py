@@ -1,12 +1,16 @@
 
 from time import time, sleep
 import threading
-from Load_Test.recurring_event_thread import RecurringEventThread
+from Load_Test.Misc.recurring_event_thread import RecurringEventThread
 import os
 import csv
 from requests.exceptions import ConnectionError
 import datetime
+from collections import namedtuple
+from Load_Test.Locust_Files.api_locust import MARK_AS_FAIL
+from collections import namedtuple
 
+FailedRoute = namedtuple("FailedRoute", ["route", "perc_98", "percent_under_sla"])
 
 
 
@@ -30,9 +34,10 @@ Design Principles (reference assumption)
 
 
 class AutomatedTestCase:
-    API_Performance_Dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    Procedures_File = os.path.join(API_Performance_Dir, "Procedures.yaml")
-    Setups_File = os.path.join(API_Performance_Dir, "Setups.yaml")
+    #TODO: MAKE THESE COME FROM CONFIG
+    SLA_ms_max_time = 150
+    CONSECUTIVE_FAILED_SNAPSHOTS_TIL_FAIL = 3
+    TO_FAILURE_PROCEDURE = "TO FAILURE"
 
     def __init__(self, setup_name, procedures_name, api_test_runner, stat_interval):
         """
@@ -44,7 +49,7 @@ class AutomatedTestCase:
         self.name = "{setup}: {procedure} - {date}".format(setup=setup_name, procedure=procedures_name,
                                                            date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.stat_interval = stat_interval
-        self.setup_test_method = api_test_runner.setup_manuel_test
+        self.setup_test_method = api_test_runner.custom_api_test
         self.teardown_test_method = api_test_runner.stop_tests
         self.get_stats_method = api_test_runner.get_stats
         self.ramp_up_method = api_test_runner.start_ramp_up
@@ -59,22 +64,72 @@ class AutomatedTestCase:
         self.current_procedure_number = 0
         self.old_stats = None
 
+        if AutomatedTestCase.TO_FAILURE_PROCEDURE in procedures_name:
+            self.sla_failure = True
+            self.setup.max_reqeust = False
+            self.setup.assume_tcp = False
+            self.setup.bin_by_resp = False
+            self.failed = False
+        else:
+            self.sla_failure = False
+            self.failed = False
+        self.consecutive_failed_snapshots = 0
+        self.last_passed_snapshot = None
+
 
 
 
     def stats(self):
         old_stats = self.old_stats
         new_stats = self.get_stats_method()
-        proc_time = time() - self.started_procedure_time
-        group = self.current_procedure.group_name
-        new_stats["proc time"] = proc_time
-        new_stats["group"] = group
+        new_stats["proc time"] = time() - self.started_procedure_time
+        new_stats["group"] = self.current_procedure.group_name
         new_stats["procedure num"] = self.current_procedure_number
         new_stats["name"] = self.name
+        if self.sla_failure:
+            self.__check_and_handle_failure(new_stats)
+
+
         if old_stats != None:
             pass
             #TODO decide if we want to only calculate stats for that time stamp
         return new_stats
+
+
+    def __check_and_handle_failure(self, stats):
+        if self.__highest_percentage_failure(stats):
+            self.consecutive_failed_snapshots += 1
+            if self.consecutive_failed_snapshots >= AutomatedTestCase.CONSECUTIVE_FAILED_SNAPSHOTS_TIL_FAIL:
+                self.failed = True
+        else:
+            if self.consecutive_failed_snapshots is 0:
+                self.last_passed_snapshot = stats
+            self.consecutive_failed_snapshots = 0
+
+
+    def __highest_percentage_failure(self, stats):
+        failed_times = []
+        for path, dist_times in stats["stats"]:
+            p_98 = dist_times["98%"]
+            if p_98 > AutomatedTestCase.SLA_ms_max_time:
+
+
+                if dist_times["50%"] > AutomatedTestCase.SLA_ms_max_time:
+                    failed_times.append(FailedRoute(path, p_98, "<50%"))
+                elif dist_times["66%"] > AutomatedTestCase.SLA_ms_max_time:
+                    failed_times.append(FailedRoute(path, p_98, "<34%"))
+                elif dist_times["75%"] > AutomatedTestCase.SLA_ms_max_time:
+                    failed_times.append(FailedRoute(path, p_98, "<25%"))
+                elif dist_times["80%"] > AutomatedTestCase.SLA_ms_max_time:
+                    failed_times.append(FailedRoute(path, p_98, "<20%"))
+                elif dist_times["90%"] > AutomatedTestCase.SLA_ms_max_time:
+                    failed_times.append(FailedRoute(path, p_98, "<10%"))
+                else:
+                    failed_times.append(FailedRoute(path, p_98, "<2%"))
+
+                failed_times.append(FailedRoute)
+
+        return failed_times
 
     @property
     def ramped_up(self):
@@ -84,10 +139,14 @@ class AutomatedTestCase:
             return True
 
 
+
+
+
+
     def __handle_procedures(self):
         stat_retriever = RecurringEventThread(self.stat_interval, self.stats)
         self.__handle_procedure(stat_retriever, True)
-        while self.procedures:
+        while self.procedures and not self.failed:
             self.__handle_procedure(stat_retriever, False)
         stat_retriever.stop()
         self.teardown_test_method()
@@ -107,13 +166,18 @@ class AutomatedTestCase:
             assert int(self.number_of_users()) == int(self.current_procedure.init_users)
         self.ramp_up_method(self.current_procedure.final_users, self.current_procedure.hatch_rate, first_start=False)
         stat_retriever.start()
-        sleep(self.current_procedure.hatch_time_s)
-        while not self.ramped_up:
-            sleep(.002)
-        if self.current_procedure.segregate:
-            self.old_stats = None
-            self.reset_stats_method()
-        sleep(self.current_procedure.time_period)
+        if self.sla_failure:
+            while not self.failed:
+                sleep(self.stat_interval)
+
+        else:
+            sleep(self.current_procedure.hatch_time_s)
+            while not self.ramped_up:
+                sleep(.002)
+            if self.current_procedure.segregate:
+                self.old_stats = None
+                self.reset_stats_method()
+            sleep(self.current_procedure.time_period)
 
 
 
@@ -131,8 +195,7 @@ class AutomatedTestCase:
 
     def run(self):
         self.teardown_test_method()
-        self.setup_test_method(self.setup.api_call, self.setup.env, self.setup.node, self.setup.version, self.setup.n_min,
-                     self.setup.n_max)
+        self.setup_test_method(self.setup.api_call, self.setup.env, self.setup.node, self.setup.max_reqeust)
         self.started_test_time = time()
         test_controller = threading.Thread(name='Background Test', target=self.__handle_procedures)
         test_controller.setDaemon(True)
@@ -150,13 +213,14 @@ class AutomatedTestCase:
 
     class TestSetup:
 
-        def __init__(self, api_call, env, node, version, n_min, n_max):
-            self.api_call = api_call
-            self.env = env
-            self.node = node
-            self.version = version
-            self.n_min = n_min
-            self.n_max = n_max
+        def __init__(self, api_call, env, node, max_request, assume_tcp, bin_by_resp):
+            self.api_call = api_call #json
+            self.env = env #string enum
+            self.node = node #small int
+            self.max_reqeust = max_request #bool
+            self.assume_tcp = assume_tcp
+            self.bin_by_resp = bin_by_resp
+
 
         @classmethod
         def from_file(cls, config, name):
@@ -164,10 +228,10 @@ class AutomatedTestCase:
             api_call = setup_data["api call"]
             env = setup_data["env"]
             node = setup_data["node"]
-            version = setup_data["version"]
-            n_min = setup_data["min"]
-            n_max = setup_data["max"]
-            test_setup = AutomatedTestCase.TestSetup(api_call, env, node, version, n_min, n_max)
+            max_request = setup_data["max_request"]
+            assume_tcp  = setup_data["assume_tcp"]
+            bin_by_resp = setup_data["bin_by_resp"]
+            test_setup = AutomatedTestCase.TestSetup(api_call, env, node, max_request, assume_tcp, bin_by_resp)
             return test_setup
 
 

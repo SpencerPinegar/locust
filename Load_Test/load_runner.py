@@ -16,14 +16,18 @@ import logging
 import math
 import datetime
 import time
+from collections import namedtuple
 
 import requests
 from requests.exceptions import ConnectionError
 import backoff
-from Load_Test.exceptions import (SlaveInitilizationException, WebOperationNoWebTest, InvalidAPIRoute, InvalidAPIEnv,
-                                  InvalidAPIVersion, InvalidAPINode)
-from Load_Test.environment_wrapper import EnvironmentWrapper as EnvWrap
-
+from Load_Test.exceptions import (SlaveInitilizationException, InvalidRoute, InvalidAPIEnv, InvalidPlaybackPlayer,
+                                  InvalidPlaybackRoute, InvalidAPIVersion, InvalidAPINode, InvalidAPIVersionParams,
+                                  InvalidCodec, OptionTypeError)
+from Load_Test.Misc.environment_wrapper import (PlaybackEnvironmentWrapper as PlaybackWrap,
+                                                APIEnvironmentWrapper as APIWrap,)
+from Load_Test.Misc.utils import clean_stdout, size_key, API_VERSION_KEYS
+from Load_Test.Data.request_pool import RequestPoolFactory
 
 
 logging.basicConfig(level=logging.DEBUG,
@@ -33,22 +37,29 @@ logger = logging.getLogger(__name__)
 SECONDS = 1000
 
 API_LOAD_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-
+locust_file_prefix = "Locust_Files"
 PROJECT_DIR = os.path.dirname(API_LOAD_TEST_DIR)
 LOCALVENV_DIR = os.path.join(PROJECT_DIR, "localVenv/")
 VENV_DIR = os.path.join(PROJECT_DIR, "venv/")
 
 STATS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Stats")
 LOGS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Logs")
+PLAYBACK_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/playback_locust.py")
+API_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/api_locust.py")
+DUMMY_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/master_locust.py")
 
-SLAVE_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "api_locust.py")
-MASTER_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, "master_locust.py")
 
 
+
+
+LocustFilePaths = namedtuple('LoucstFilePaths', ["master", "api", "playback"])
+
+locust_file_paths = LocustFilePaths(DUMMY_LOCUST_FILE, API_LOCUST_FILE, PLAYBACK_LOCUST_FILE)
 # TODO: Make salt stack configuration for build out on machines
 
 
 class LoadRunner:
+
     assumed_load_average_added = 1
     assumed_cpu_used = 7
     Stat_Interval = 2
@@ -56,7 +67,7 @@ class LoadRunner:
     process_age_limit = 2  # TODO Find process age limit
     Succesful_Test_Start = {"message": "Swarming started", "success": True}
     Succesful_Test_Stop = { "message": "Test stopped", "success": True}
-    Max_Connection_Time = 2.5
+    Max_Connection_Time = 5
     CPU_Measure_Interval = .2
     Boot_Time_Delay = 2.5  # TODO Find actual timing
     Max_Process_Wait_Time = 5
@@ -64,15 +75,12 @@ class LoadRunner:
 
     # TODO: make a method to ensure the class is not running any proccesses from last run
     # TODO: make sure children is not tainted by automated_test in background
-    def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config):
+    def __init__(self, master_host_info, web_ui_info, config):
         self.master = None
         self.slaves = []
-        self.master_locust_file = master_locust_file
-        self.slave_locust_file = slave_locust_file
         self.master_host_info = master_host_info
         self.web_ui_host_info = web_ui_info
         self.config = config
-        self.no_web = None
         self.expected_slaves = 0
         self.__set_virtual_env()
         self._default_2_cores = False
@@ -81,28 +89,29 @@ class LoadRunner:
         self._users = -1
         self._hatch_rate = -1
 
-
     @property
     def users(self):
         self.__post_boot_wait()
         if not self.children:
             return -1
-        elif self.no_web:
-            return self._users
         else:
             return self._get_ui_info()["user_count"]
 
-
-
     @property
     def state(self):
-        self.__post_boot_wait()
         if not self.children:
             return "idle"
-        elif self.no_web:
-            return "running no web"
         else:
-            return self._ui_state()
+            self.__post_boot_wait()
+            try:
+                state = self._ui_state()
+            except ConnectionError:
+                return "idle"
+            else:
+                if state in ["running", "hatching"]:
+                    return "running"
+                elif state in ["ready", "stopped"]:
+                    return "setup"
 
     @property
     def last_boot(self):
@@ -120,7 +129,6 @@ class LoadRunner:
     def last_write(self, value):
         self._last_write_acton = time.time()
 
-
     @property
     def slaves_loaded(self):
         try:
@@ -128,7 +136,6 @@ class LoadRunner:
             return True
         except SlaveInitilizationException as e:
             return False
-
 
     @property
     def master(self):
@@ -160,19 +167,6 @@ class LoadRunner:
         self._slaves = value
 
     @property
-    def no_web(self):
-        return self._no_web
-
-    @no_web.setter
-    def no_web(self, value):
-        if self._no_web is None:
-            self._no_web = value
-        else:
-            if not self.master or not self.slaves:
-                raise Load_Test.exceptions.LoadRunnerFailedClose(
-                    "You can not change the web status of a test without closing the previous test")
-
-    @property
     def children(self):
         return self.__child_processes()
 
@@ -188,8 +182,14 @@ class LoadRunner:
     def default_2_cores(self, value):
         self._default_2_cores = value
 
-#### Server Write Commands
+    @property
+    def running(self):
+        if self.state is "idle":
+            return False
+        else:
+            return True
 
+#### Server Write Commands
 
     def _start_ui_load(self, locust_count, hatch_rate):
         self._users = locust_count
@@ -200,8 +200,6 @@ class LoadRunner:
             raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
         self.last_write = time.time()
 
-
-
     def _stop_ui_test(self):
         self._users = -1
         self._hatch_rate = -1
@@ -210,21 +208,14 @@ class LoadRunner:
             raise Load_Test.exceptions.FailedToStartLocustUI("The /stop loocust URL was accessed but the test was not properly stopped")
         self.last_write = time.time()
 
-
     def _reset_stats(self):
         response = self.__request_ui("get", extension="/stats/reset")
         self.last_write = time.time()
 
-
-
 #### Server Uitility Commands
     def _kill_test(self):
-
         try:
-            if self.no_web:
-                info_list, return_codes = self.__fresh_state(True)
-            else:
-                info_list, return_codes = self.__fresh_state(False)
+            info_list, return_codes = self.__fresh_state(False)
             self._users = -1
             self._hatch_rate = -1
             return info_list, return_codes
@@ -232,83 +223,67 @@ class LoadRunner:
             raise
 
 
-    def _run_multi_core(self, api_call_weight, env, node, version, n_min, n_max,
-                        stats_file_name=None, log_level=None, log_file_name=None, no_web=False,
-                        reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
-                        stats_folder=None, log_folder=None):
-        self.no_web = no_web
-        self._users = num_clients
+    def _run_distributed(self, env_options, master_locust_file, slave_locust_file):
+        pass
+
+    #TODO: change back
+    def _run_multi_core(self, env_options, master_locust_file, slave_locust_file,
+                        stats_file_name=None, log_level=None, log_file_name=None,
+                        reset_stats=False,  stats_folder=None, log_folder=None):
         available_cores = self.__avaliable_cpu_count()
-        if self.default_2_cores:
+        if self.default_2_cores and available_cores < 2:
             available_cores = 2
         if available_cores <= 1:
             raise Load_Test.exceptions.NotEnoughAvailableCores(
                 "There where only {cores} cores available for load test on this machine".format(
                     cores=available_cores))  # TO RUN MULTICORE WE NEED MORE THAN ONE CORE
-
+        host = self.__get_host(env_options)
         self.expected_slaves = available_cores - 1
-        os_env = self.__get_configured_env(api_call_weight, env, version, node, n_min, n_max)
         stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
-
-        master_options = self.__create_master_options(env, node, stats_file_name, log_level, log_file_name, no_web,
-                                                      reset_stats,
-                                                      self.expected_slaves, num_clients, hatch_rate, run_time)
-        slave_options = self.__create_slave_options(env, node, reset_stats)
-
-        self.master = self.__create_process(os_env.get_env(), master_options)
-
+        master_options = self.__create_master_options(host, master_locust_file, stats_file_name, log_level, log_file_name)
+        slave_options = self.__create_slave_options(host, slave_locust_file, reset_stats)
+        self.master = self.__create_process(env_options.get_env(), master_options)
         to_be_slaves = []
+        env_options.max_slave_index = self.expected_slaves -1 # len(expected_slaves) -1 = max index
+        env_options.slave_index = 0
         for index in range(self.expected_slaves):
-            slave = self.__create_process(os_env.get_env(), slave_options)
+            slave = self.__create_process(env_options.get_env(), slave_options)
             to_be_slaves.append(slave)
+            env_options.slave_index += 1
         self.slaves = to_be_slaves
         self.last_boot = time.time()
+        time.sleep(4)
+        info_list, return_code = self._kill_test()
+        print(info_list)
+        print(return_code)
+        print(master_options)
+        print(slave_options)
 
-    def _run_single_core(self, api_call_weight, env, node, version, n_min, n_max, stats_file_name=None, log_level=None,
-                         log_file_name=None,
-                         no_web=False, reset_stats=False, num_clients=None, hatch_rate=None, run_time=None,
+    def _run_single_core(self, env_options, master_locust_file,
+                         stats_file_name=None, log_level=None, log_file_name=None,
                          stats_folder=None, log_folder=None):
-        self.no_web = no_web
-        self._users = num_clients
+
         stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
-        os_env = self.__get_configured_env(api_call_weight, env, version, node, n_min, n_max)
-
-        undis_options = self.__create_undistributed_options(env, node, stats_file_name, log_level, log_file_name, no_web,
-                                                            reset_stats,
-                                                            num_clients, hatch_rate, run_time)
-        self.master = self.__create_process(os_env.get_env(), undis_options)
+        host = self.__get_host(env_options)
+        undis_options = self.__create_undistributed_options(host, master_locust_file, stats_file_name, log_level,
+                                                            log_file_name)
+        self.master = self.__create_process(env_options.get_env(), undis_options)
         self.last_boot = time.time()
-
 
     def _is_running(self):
         state = self.state
         if state == "idle":
             return False
-        elif state == "running no web":
+        elif state == "running":
             return True
         else:
-            if state == "running" or state == "hatching":
+            state = self.state
+            if state == "running":
                 return True
             else:
                 return False
 
-    def _is_setup(self):
-        state = self.state
-        if state == "idle":
-            return False
-        elif state == "running no web":
-            if len(self.children) is not self.expected_slaves + 1:
-                raise SlaveInitilizationException("All of the slaves where not loaded correctly")
-            return False
-        elif state == "ready" or state == "stopped":
-            self.__assert_slave_count()
-            return True
-        return False
-
-
-
-
-#### SERVER READ COMMANDS
+######################################## SERVER READ COMMANDS #########################################################
     def _get_ui_info(self, **kwargs):
         self.__post_action_wait()
         response = self.__request_ui("get", extension="/stats/requests", **kwargs)
@@ -338,7 +313,6 @@ class LoadRunner:
         self.__post_action_wait()
         site_data = self._get_ui_info(headers={'Cache-Control': 'no-cache'})
         return site_data["state"]
-
 
     def _get_ui_request_distribution_stats(self):
         self.__post_action_wait()
@@ -374,14 +348,76 @@ class LoadRunner:
         response = self.__request_ui("get", extension="/exceptions/csv")
         df = self.__response_to_pandas(response)
         return df
-    #####    THESE ARE THE HELPER FUNCTIONS
+
+    def _get_pool_length(self, route, env, *args):
+        pool_factory = RequestPoolFactory(self.config, 0, 0, 0, 0, None, [env])
+        the_info = pool_factory.get_route_pool_and_ribbon(route, *args)
+        if isinstance(the_info, dict):
+            for item in the_info.values():
+                return len(item.pool)
+        else:
+            return len(the_info)
 
 
-    def _users_property_function_wrapper(self):
-        return self.users
 
 
+#########################    THESE ARE THE HELPER FUNCTIONS   ###########################################################
+
+    #These are options creation commands
+    def _get_api_options(self, api_info, env, node, max_req, stat_interval,
+                          assume_tcp, bin_by_resp_time, comp_idx=0, max_comp_idx=0):
+        #TODO find easy way to set size for each api list we will be grabbing
+        #1. Iterate through each api route key.
+            #if its a route then go get the max size and set the size key
+            #in the api locust setup when the locust is grabbing it's data set reset the size to the current size
+        for api_route, api_version_info in api_info.items():
+            if api_route.title() in self.config.api_routes:
+                route_size = self._get_pool_length(api_route.title(), env, api_version_info, env)
+                for version_info in api_version_info.values():
+                    version_info[size_key] = route_size
+        return APIWrap(api_info, node, env, max_req, assume_tcp, bin_by_resp_time, stat_interval,
+                                 comp_idx, 0, max_comp_idx, 0, 0)
+
+    def _get_playback_options(self, client, playback_route, quality, codecs, stat_interval, users, dvr, days_old,
+                              comp_idx=0, max_comp_idx=0):
+        overall_size = self._get_pool_length(playback_route, "DEV2", dvr, days_old, users)
+        return PlaybackWrap(playback_route, quality, codecs, client, users, dvr, days_old, stat_interval,
+                                    comp_idx, 0, max_comp_idx, 0, overall_size)
+
+
+
+    #THESE ARE FILEPATH FUNCTIONS
+    def __get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
+        if stats_folder is not None and stats_file_name is not None:
+            stats_file_name = self.__get_file_path(stats_folder, stats_file_name)
+        else:
+            stats_file_name = self.__get_stats_location(stats_file_name) if stats_file_name is not None else None
+        if log_folder is not None and log_file_name is not None:
+            log_file_name = self.__get_file_path(log_folder, log_file_name)
+        else:
+            log_file_name = self.__get_log_location(log_file_name) if log_file_name is not None else None
+        return stats_file_name, log_file_name
+
+    def __get_stats_location(self, file_name):
+        return self.__get_file_path(STATS_FOLDER, file_name)
+
+    def __get_log_location(self, file_name):
+        return self.__get_file_path(LOGS_FOLDER, file_name)
+
+    def __get_file_path(self, folder_path, file_name):
+        today = datetime.datetime.today().strftime('%Y-%m-%d-%H-%m')
+        if not os.path.isdir(folder_path):
+            os.mkdir(folder_path)
+        todays_file = os.path.join(folder_path, "{today}_{name}".format(today=today, name=file_name))
+        return todays_file
+
+    #THESE ARE PROCESS STATE COMMANDS
     def __fresh_state(self, wait):
+        """
+        Helper method for _kill_test, use only if _kill_test doesn't suit your needs
+        :param wait: How long to wait before killing the site
+        :return: return_info (raw string), return codes [int]
+        """
         return_info = []
         return_codes = []
         if wait:
@@ -401,9 +437,23 @@ class LoadRunner:
         self.slaves = []
         self.expected_slaves = 0
         if self.children:
-            raise Load_Test.exceptions.LoadRunnerFailedClose("unsuccesfully closed all child proccesses")
-        return return_info, return_codes
+            raise Load_Test.exceptions.LoadRunnerFailedClose("unsuccessfully closed all child processes")
+        std_out_list = [clean_stdout(info_[0]) if info_[0] else "" for info_ in return_info]
+        std_error_list = [clean_stdout(info_[1]) if info_[1] else "" for info_ in return_info]
+        class ProcessInfo:
+            def __init__(self, std_out, std_err):
+                self._std_out = std_out
+                self._std_err = std_err
 
+            def __str__(self):
+                return "\n_________________ERROR_______________\n" + self._std_err +\
+                       "\n_________________OUT__________________\n" + self._std_out
+
+            def __repr__(self):
+                return str(self)
+
+        return_info = [ProcessInfo(std_out_list[index], std_error_list[index]) for index in range(len(std_error_list))]
+        return return_info, return_codes
 
     def __safe_wait_kill(self, process):
         if process is None:
@@ -430,6 +480,83 @@ class LoadRunner:
             else:
                 raise e
 
+    def __child_processes(self):
+        current_process = psutil.Process()
+        children = current_process.children(recursive=True)
+        return children
+
+    #THESE ARE PROCESS CREATION METHODS
+    def __create_process(self, os_env, options):
+        p = sp.Popen(options, env=os_env, stdout=sp.PIPE, stderr=sp.STDOUT, stdin=sp.PIPE, shell=True)
+        return p
+
+    def __create_master_options(self, host, master_locust_file, csv_file=None, log_level=None, log_file=None):
+
+        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) (maybe, currently port forwarded
+        web_ui_host = self.web_ui_host_info[0]
+        web_ui_port = self.web_ui_host_info[1]
+        masterbindHost = self.master_host_info[0]
+        masterbindPort = self.master_host_info[1]
+        locust_path = "locust"#self.__get_locust_file_dir()
+
+        master_arg_string = "{locust} -f {master_file} -H {l_host} --master --master-bind-host={mb_host} --master-bind-port={mb_port}".format(
+            locust=locust_path, master_file=master_locust_file, l_host=host, mb_host=masterbindHost, mb_port=masterbindPort
+        )
+        if csv_file is not None:
+            master_arg_string = "{master_arg_string} --csv={file_name}".format(master_arg_string=master_arg_string,
+                                                                               file_name=csv_file)
+        if log_file is not None:
+            master_arg_string = "{master_arg_string} --logfile={file_name}".format(master_arg_string=master_arg_string,
+                                                                                   file_name=log_file)
+        if log_level is not None:
+            master_arg_string = "{master_arg_string} --loglevel={loglevel}".format(master_arg_string=master_arg_string,
+                                                                                   loglevel=log_level)
+
+
+        return shlex.split(master_arg_string)
+
+    def __create_slave_options(self, host, slave_locust_file, reset_stats=False):
+        masterhost = self.master_host_info[0]
+        masterport = self.master_host_info[1]
+        locust_path = "locust"#self.__get_locust_file_dir()
+
+        slave_arg_string = "{locust} -f {slave_file} -H {l_host} --slave --master-host={m_host} --master-port={m_port}".format(
+            locust = locust_path, slave_file=slave_locust_file, l_host=host, m_host=masterhost, m_port=masterport
+        )
+        if reset_stats:
+            slave_arg_string = "{slave_arg_string} --reset-stats".format(slave_arg_string=slave_arg_string)
+
+        return shlex.split(slave_arg_string)
+
+    def __create_undistributed_options(self, host, locust_file, csv_file=None, log_level=None, log_file=None):
+
+        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) maybe, currently port forwarding
+        locust_path = "locust"#self.__get_locust_file_dir()
+
+        undis_arg_string = "{locust} -f {undis_file} -H {l_host} ".format(
+           locust=locust_path, undis_file=locust_file, l_host=host,
+        )
+        if csv_file is not None:
+            undis_arg_string = "{undis_arg_string} --csv={file_name}".format(undis_arg_string=undis_arg_string,
+                                                                             file_name=csv_file)
+        if log_file is not None:
+            undis_arg_string = "{undis_arg_string} --logfile={file_name}".format(undis_arg_string=undis_arg_string,
+                                                                                 file_name=log_file)
+        if log_level is not None:
+            undis_arg_string = "{undis_arg_string} --loglevel={loglevel}".format(undis_arg_string=undis_arg_string,
+                                                                                 loglevel=log_level)
+        return shlex.split(undis_arg_string)
+
+    #THESE ARE MISC HELPER FUNCTIONS
+    def _users_property_function_wrapper(self):
+        return self.users
+
+    def __assert_slave_count(self):
+        site_data = self._get_ui_info()
+        slaves_count = site_data["slaves"]
+        if self.expected_slaves is not slaves_count:
+            raise Load_Test.exceptions.SlaveInitilizationException("All of the slaves where not loaded correctly")
+
     def __avaliable_cpu_count(self):
         """
         Takes samples of the system CPU usage to determine how many CPU's must be allocated to current system priceless
@@ -452,156 +579,10 @@ class LoadRunner:
         available_cores = min(available_cores_cpu, available_cores_load_avg)
         return int(available_cores)
 
-    def __get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
-        if stats_folder is not None and stats_file_name is not None:
-            stats_file_name = self.__get_file_path(stats_folder, stats_file_name)
-        else:
-            stats_file_name = self.__get_stats_location(stats_file_name) if stats_file_name is not None else None
-        if log_folder is not None and log_file_name is not None:
-            log_file_name = self.__get_file_path(log_folder, log_file_name)
-        else:
-            log_file_name = self.__get_log_location(log_file_name) if log_file_name is not None else None
-        return stats_file_name, log_file_name
-
-    def __get_stats_location(self, file_name):
-        return self.__get_file_path(STATS_FOLDER, file_name)
-
-    def __get_log_location(self, file_name):
-        return self.__get_file_path(LOGS_FOLDER, file_name)
-
-    def __get_file_path(self, folder_path, file_name):
-        today = datetime.datetime.today().strftime('%Y-%m-%d-%H-%m')
-        if not os.path.isdir(folder_path):
-            os.mkdir(folder_path)
-        todays_file = os.path.join(folder_path, "{today}_{name}".format(today=today, name=file_name))
-        return todays_file
-
-    def __child_processes(self):
-        current_process = psutil.Process()
-        children = current_process.children(recursive=True)
-        return children
-
-    def __create_process(self, os_env, options):
-        p = sp.Popen(options, env=os_env, stdout=sp.PIPE, stderr=sp.STDOUT, stdin=sp.PIPE)
-        return p
-
-    def __get_configured_env(self, api_call_weight, env, version, node, normal_min, normal_max):
-        my_env = EnvWrap(os.environ.copy(), API_CALL_WEIGHT=api_call_weight, VERSION=version,
-                         NODE=node, ENV=env, N_MIN=normal_min, N_MAX=normal_max, STAT_INTERVAL=LoadRunner.Stat_Interval)
-        return my_env
-
-    def __create_master_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
-                                reset_stats=False, expected_slaves=None, num_clients=None, hatch_rate=None,
-                                run_time=None):
-
-        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) (maybe, currently port forwarded
-        host = self.config.get_api_host(env, node)
-        web_ui_host = self.web_ui_host_info[0]
-        web_ui_port = self.web_ui_host_info[1]
-        masterbindHost = self.master_host_info[0]
-        masterbindPort = self.master_host_info[1]
-        locust_path = "locust"#self.__get_locust_file_dir()
-
-        master_arg_string = "{locust} -f {master_file} -H {l_host} --master --master-bind-host={mb_host} --master-bind-port={mb_port}".format(
-            locust=locust_path, master_file=self.master_locust_file, l_host=host, mb_host=masterbindHost, mb_port=masterbindPort
-        )
-        if csv_file is not None:
-            master_arg_string = "{master_arg_string} --csv={file_name}".format(master_arg_string=master_arg_string,
-                                                                               file_name=csv_file)
-        if log_file is not None:
-            master_arg_string = "{master_arg_string} --logfile={file_name}".format(master_arg_string=master_arg_string,
-                                                                                   file_name=log_file)
-        if log_level is not None:
-            master_arg_string = "{master_arg_string} --loglevel={loglevel}".format(master_arg_string=master_arg_string,
-                                                                                   loglevel=log_level)
-
-        if no_web:
-            assert expected_slaves is not None, "expected_slaves param required to run locust in no web state"
-            assert num_clients is not None, "num_clients param required to run locust in no web state"
-            assert hatch_rate is not None, "hatch_rate param required to run locust in no web state"
-            assert run_time is not None, "run_time param required to run locust in no web state"
-            assert csv_file is not None, "csv_file param required to run locust in no web state"
-            master_arg_string = "{master_arg_string} --no-web -c {n_clients} -r {n_hatch} -t {n_time} --expect-slaves={e_slaves}".format(
-                master_arg_string=master_arg_string, n_clients=num_clients, n_hatch=hatch_rate, n_time=run_time,
-                e_slaves=expected_slaves
-            )
-            if reset_stats:
-                master_arg_string = "{master_arg_string} --reset-stats".format(master_arg_string=master_arg_string)
-
-        return shlex.split(master_arg_string)
-
-    def __create_slave_options(self, env, node, reset_stats=False):
-        host = self.config.get_api_host(env, node)
-        masterhost = self.master_host_info[0]
-        masterport = self.master_host_info[1]
-        locust_path = "locust"#self.__get_locust_file_dir()
-
-        slave_arg_string = "{locust} -f {slave_file} -H {l_host} --slave --master-host={m_host} --master-port={m_port}".format(
-            locust = locust_path, slave_file=self.slave_locust_file, l_host=host, m_host=masterhost, m_port=masterport
-        )
-        if reset_stats:
-            slave_arg_string = "{slave_arg_string} --reset-stats".format(slave_arg_string=slave_arg_string)
-
-        return shlex.split(slave_arg_string)
-
-    def __create_undistributed_options(self, env, node, csv_file=None, log_level=None, log_file=None, no_web=False,
-                                       reset_stats=False, num_clients=None, hatch_rate=None, run_time=None):
-
-        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) maybe, currently port forwarding
-        host = self.config.get_api_host(env, node)
-        locust_path = "locust"#self.__get_locust_file_dir()
-
-        undis_arg_string = "{locust} -f {undis_file} -H {l_host} ".format(
-           locust=locust_path, undis_file=self.slave_locust_file, l_host=host,
-        )
-        if csv_file is not None:
-            undis_arg_string = "{undis_arg_string} --csv={file_name}".format(undis_arg_string=undis_arg_string,
-                                                                             file_name=csv_file)
-        if log_file is not None:
-            undis_arg_string = "{undis_arg_string} --logfile={file_name}".format(undis_arg_string=undis_arg_string,
-                                                                                 file_name=log_file)
-        if log_level is not None:
-            undis_arg_string = "{undis_arg_string} --loglevel={loglevel}".format(undis_arg_string=undis_arg_string,
-                                                                                 loglevel=log_level)
-
-        if no_web:
-            assert num_clients is not None, "num_clients param required to run locust in no web state"
-            assert hatch_rate is not None, "hatch_rate param required to run locust in no web state"
-            assert run_time is not None, "run_time param required to run locust in no web state"
-            assert csv_file is not None, "csv_file param required to run locust in no web state"
-            undis_arg_string = "{undis_arg_string} --no-web -c {n_clients} -r {n_hatch} -t {n_time}".format(
-                undis_arg_string=undis_arg_string, n_clients=num_clients, n_hatch=hatch_rate, n_time=run_time
-            )
-            if reset_stats:
-                undis_arg_string = "{undis_arg_string} --reset-stats".format(undis_arg_string=undis_arg_string)
-
-        return shlex.split(undis_arg_string)
-
-
-
-
-    def __assert_slave_count(self):
-        site_data = self._get_ui_info()
-        slaves_count = site_data["slaves"]
-        if self.expected_slaves is not slaves_count:
-            raise Load_Test.exceptions.SlaveInitilizationException("All of the slaves where not loaded correctly")
-
-
-    def __assert_web_ui(self):
-        if self.no_web:
-            raise WebOperationNoWebTest("No Test is Running Through the Test UI")
-
-
-
-
-
-
     def __response_to_pandas(self, response):
         io_string = StringIO(response.content)
         df = pd.read_csv(io_string, sep=",")
         return df
-
-
 
     def __set_virtual_env(self):
         activate_virtual_env_path = "bin/activate_this.py"
@@ -615,17 +596,19 @@ class LoadRunner:
         else:
             raise Exception("Could not find virutal env")
 
-
-
+    def __get_host(self, options):
+        if isinstance(options, APIWrap):
+            host = self.config.get_api_host(options.env, options.node)
+            return host
+        elif isinstance(options, PlaybackWrap):
+            host = self.config.get_api_host("DEV2", 0)
+            return host
 
     @backoff.on_exception(backoff.expo,
                           ConnectionError,
                           max_time=Max_Connection_Time)
     def __request_ui(self, request, extension=None, **kwargs):
         self.__post_boot_wait()
-        self.__assert_web_ui()
-        if self.no_web:
-            raise Load_Test.exceptions.AttemptAccessUIWhenNoWeb("Locust is running in no web mode, you can't access the web UI")
         web_ui_host = self.web_ui_host_info[0]
         web_ui_port = self.web_ui_host_info[1]
         if web_ui_host in ["localhost", "127.0.0.1", "0.0.0.0"]:
@@ -641,21 +624,62 @@ class LoadRunner:
         return response
 
 
+######################################### VERIFICATION METHODS #########################################################
 
+    def _verify_playback_options(self, client, playback_route, quality, codecs, users, dvr, days_old, stat_int):     #check dist loc info
 
+        #check playback route
+        if playback_route not in self.config.playback_routes:
+            raise InvalidPlaybackRoute("{rte} Invalid Playback Route - Valid: {vld}".format(rte=playback_route,
+                                                                                            vld=str(self.config.playback_routes)))
+        #check playback client
+        if client not in self.config.playback_players:
+            raise InvalidPlaybackPlayer("{clt} Invalid Playback Player - Valid: {vld}".format(clt=client,
+                                                                                              vld=str(self.config.playback_players)))
+        #check plaback codec
+        if not isinstance(codecs, list):
+            if codecs and not isinstance(codecs[0], str):
+                raise InvalidCodec("Invalid Playback Codec, codecs must be entered as list of strings")
+        #check quality
+        self.__verify_int("{} option".format(PlaybackWrap.QUALITY_KEY), quality)
+        #check the stat_int
+        self.__verify_int("{} option".format(PlaybackWrap.STAT_INT_KEY), stat_int)
+        #Top N Playback is different than other routes
+        if not playback_route == "Top N Playback":
+            self.__verify_int("{} option".format(PlaybackWrap.USERS_KEY), users)
+            self.__verify_int("{} option".format(PlaybackWrap.DVR_KEY), dvr)
+            self.__verify_int("{} option".format(PlaybackWrap.DAYS_KEY), days_old)
 
-
-    def _verify_params(self, api_call_weight, env, version, node):
-        self.__verify_api_routes(api_call_weight)
-        self.__verify_version(api_call_weight, version)
+    def _verify_api_params(self, api_call_weight, env, node, max_request, stat_interval, assume_tcp, bin_by_resp):
+        #check dis locust
+        self.__verify_api_call_weight(api_call_weight)
         self.__verify_env(env)
         self.__verify_node(env, node)
+        self.__verify_bool("{} option".format(APIWrap.MAX_RPS_KEY), max_request)
+        self.__verify_bool("{} option".format(APIWrap.ASSUME_TCP_KEY), assume_tcp)
+        self.__verify_bool("{} option".format(APIWrap.BIN_RSP_TIME_KEY), bin_by_resp)
+        if stat_interval:
+            self.__verify_int("{} option".format(APIWrap.STAT_INT_KEY), stat_interval)
 
-    def __verify_api_routes(self, api_call_weight):
+    def __verify_api_call_weight(self, api_call_weight):
         given_routes = api_call_weight.keys()
+        #validate the route is an actual route
         for given_route in given_routes:
             if not self.config.is_route(given_route):
-                raise InvalidAPIRoute("{inv_route} is not a valid route".format(inv_route=given_route))
+                raise InvalidRoute("{inv_route} is not a valid route".format(inv_route=given_route))
+            route_params = api_call_weight[given_route]
+            #validate the version is an actual version of the route
+            for route_version in route_params.keys():
+                if not self.config.is_version(given_route, int(route_version)):
+                    raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
+                        version=route_version, route=given_route
+                    ))
+                #verify the route contains all neccesary instance variables
+                for neccesary_key in API_VERSION_KEYS:
+                    if neccesary_key not in route_params[route_version].keys():
+                        raise InvalidAPIVersionParams("{key} not in api_call {call} version {version}"
+                                                    .format(key=neccesary_key, call=given_route, version=route_version))
+
 
     def __verify_env(self, env):
         if not self.config.is_api_env(env):
@@ -667,14 +691,17 @@ class LoadRunner:
                 env=env, inv_node=node
             ))
 
-    def __verify_version(self, api_call_weight, version):
-        route_names = api_call_weight.keys()
-        for route_name in route_names:
-            if not self.config.is_version(route_name, version):
-                raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
-                    version=version, route=route_name
-                ))
+    def __verify_bool(self, name, should_be_bool):
+        if not isinstance(should_be_bool, bool):
+            error = "{name} should be a boolean".format(name=name)
+            raise OptionTypeError(error)
 
+    def __verify_int(self, name, should_be_int):
+        if not isinstance(should_be_int, int):
+            error = "{name} should be an int".format(name=name)
+            raise OptionTypeError(error)
+
+#################################################  WAIT METHODS  ########################################################
 
     def __post_action_wait(self):
         s_since = time.time() - self.last_write
@@ -682,10 +709,8 @@ class LoadRunner:
             to_sleep = LoadRunner.UI_Action_Delay - s_since
             time.sleep(to_sleep)
 
-
     def __post_boot_wait(self):
         s_since = time.time() - self.last_boot
         if s_since <= LoadRunner.Boot_Time_Delay:
             to_sleep = LoadRunner.Boot_Time_Delay - s_since
             time.sleep(to_sleep)
-

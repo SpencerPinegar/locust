@@ -1,15 +1,15 @@
-from Load_Test.config import Config
-from Load_Test.api_test import APITest
+from Load_Test.Data.config import Config
+from Load_Test.Misc.locust_test import LocustTest
 import os
 
 
-class TestConfig(APITest):
+class TestConfig(LocustTest):
 
     def setUp(self):
 
-        APITest.setUp(self)
+        LocustTest.setUp(self)
         self.expected_database_base = {"Environments", "Credentials"}
-        self.expected_db_env = {"DEV1", "DEV2", "DEV3", "QA", "BETA", "BETA2", "PROD"}
+        self.expected_db_env = {"DEV1", "DEV2", "DEV3", "QA", "BETA", "BETA2"}
         self.expected_db_env_params = {"Host", "Port"}
         self.expected_credentials_set = {"DataBase Name", "DataBase Username", "DataBase Password"}
 
@@ -17,11 +17,12 @@ class TestConfig(APITest):
         self.expected_routes_params = {"Route", "Versions", "Normal Min", "Normal Max", "Version 1", "List"}
         self.expected_api_env_params = {"VIP Host", "Node Host", "Total Nodes"}
         self.expected_api_base = {"Environments", "Routes", "Misc Tests"}
-        self.expected_misc_tests = {"Nothing", "Redundant Ts Segment", "Basic Network", "Network Byte Size", "Small DB", "Large DB"}
+        self.expected_misc_tests = {"Nothing", "Redundant Ts Segment", "Basic Network", "Network Byte Size", "Small Db", "Large Db"}
         self.expected_setup_params = {"node", "version", "env", "min", "max", "api call"}
         self.expected_procedure_params = {"init user count","final user count","hatch rate","time at load",
                                           "fresh procedure stats","ramp up stats seperate"}
-
+        self.expected_playback_routes = {"Playback", "Top N Playback"}
+        self.expected_players = {"HLS", "DASH", "QMX"}
 
 
     def test_file_exists(self):
@@ -83,6 +84,9 @@ class TestConfig(APITest):
         except Exception as e:
             self.fail(e)
 
+
+
+
     def test_recAPI_routes(self):
         try:
 
@@ -102,6 +106,15 @@ class TestConfig(APITest):
         for env in self.expected_api_env:
             self.assertTrue(self.config.is_api_env(env))
         self.assertFalse(self.config.is_api_env("NOTAPIENV"))
+
+
+    def test_playback_routes(self):
+        set_of_actual_routes = set(self.config.playback_routes)
+        self.assertSetEqual(set(self.expected_playback_routes), set_of_actual_routes, "Playback Routes broken")
+
+    def test_playback_players(self):
+        set_of_players = set(self.config.playback_players)
+        self.assertSetEqual(set(self.config.playback_players), set_of_players, "Playback Players broken")
 
 
     def test_is_node(self):
@@ -178,12 +191,6 @@ class TestConfig(APITest):
             self.assertEqual(expected_hosts, self.config.get_api_env_hosts(env))
             self.assertEqual(self.config.get_total_api_nodes(env), len(self.config.get_api_env_hosts(env)["Node"]))
 
-    def test_get_api_routes(self):
-        for route in self.expected_routes:
-            self.assertEqual(len(self.config._get_route_info(route)["Versions"]), len(self.config.get_route_versions(route)))
-            for version, route in self.config.get_api_routes(route).items():
-                self.assertTrue(str(version) in route)
-
     def test_get_api_version_fields(self):
         for route in self.expected_routes:
             api_route_spec = self.config.get_api_version_fields(route)
@@ -203,11 +210,6 @@ class TestConfig(APITest):
         user_recordings_setup = self.config.get_test_setup("Node User Recordings")
         self.assertItemsEqual(self.expected_setup_params, set(user_recordings_setup.keys()), "The test setup did not contain all neccesary keys")
 
-    def test_get_test_procedure(self):
-        benchmark_node_setup = self.config.get_test_procedure("Benchmark Node")
-        self.assertTrue(isinstance(benchmark_node_setup, list))
-        for procedure in benchmark_node_setup:
-            self.assertItemsEqual(self.expected_procedure_params, procedure.keys(), "The test procedcure did not contain all neccesary keys")
 
 
 

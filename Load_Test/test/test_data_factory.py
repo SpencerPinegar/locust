@@ -1,6 +1,6 @@
 from unittest import TestCase
-from Load_Test.config import Config
-from Load_Test.data_factory import DataFactory
+from Load_Test.Data.config import Config
+from Load_Test.Data.data_factory import DataFactory
 
 class TestDataFactory(TestCase):
 
@@ -76,6 +76,7 @@ class TestDataFactory(TestCase):
     def test_create_users(self):
         unused_desc = "asdfjlasdjf;alsdjf;a"
         count = 5
+        self.data_factory.delete_users("DEV2", unused_desc, 0)
         self.data_factory.create_users("DEV2", unused_desc, count)
         self.assertEquals(count, self.data_factory.users_count("DEV2", unused_desc), "User Guids unsuccessfully created")
         self.data_factory.delete_users("DEV2", unused_desc, 0)

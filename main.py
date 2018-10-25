@@ -1,7 +1,7 @@
 
 from Load_Test.api_app import thread_webAPP
-from Load_Test import LoadRunnerAPIWrapper
-from Load_Test.graceful_killer import GracefulKiller
+from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.Misc.graceful_killer import GracefulKiller
 from Load_Test.load_server_client import LoadServerClient
 import time
 import threading
@@ -9,9 +9,9 @@ from requests.exceptions import ConnectionError
 
 
 
-def shutdown():
+def shutdown(host):
     try:
-        client = LoadServerClient(LoadServerClient.lgen8_host_name, LoadRunnerAPIWrapper.Extension)
+        client = LoadServerClient(host, LoadRunnerAPIWrapper.Extension)
         client.shutdown()
     except ConnectionError:
         return
@@ -19,7 +19,7 @@ def shutdown():
 
 
 
-def main_func(two_cores):
+def main_func(two_cores, host):
     LoadRunnerAPIWrapper.setup()
     LoadRunnerAPIWrapper.TEST_API_WRAPPER.default_2_cores = two_cores
     killer = GracefulKiller()
@@ -35,7 +35,7 @@ def main_func(two_cores):
     while True:
         time.sleep(1)
         if killer.kill_now:
-            shutdown()
+            shutdown(host)
             LoadRunnerAPIWrapper.teardown()
             print("exiting")
             exit(0)

@@ -1,38 +1,39 @@
-from Load_Test.api_test import APITest
 import math
 import time
 
+from Load_Test.Data.route_relations import APIRoutesRelation as APIRel, PlaybackRoutesRelation as PlaybackRel
+from Load_Test.Misc.locust_test import LocustTest
 
-class TestLoadRunner(APITest):
+
+
+class TestLoadRunner(LocustTest):
     """
     These Tests are dependnet on the test_api_locust suit -- especially the test_user_recordigns_ribbon_route tests
     """
 
+    def test_run_single_core_api(self):
+        self._test_undistributed_api(APIRel.USER_RECORDING_RIBBON, False)
 
+    def test_run_multi_core_api(self):
+        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, False)
 
+    def test_run_single_core_api_max_request(self):
+        self._test_undistributed_api(APIRel.USER_RECORDING_RIBBON, True)
 
-    def test_run_single_core_no_web(self):
-        self._test_undistributed("User Recordings Ribbon", 1, False)
+    def test_run_multi_core_api_max_request(self):
+        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, True)
 
+    def test_run_single_core_playback(self):
+        self._test_undistributed_playback(PlaybackRel.Top_N_Playback, "HLS", 0)
 
-    def test_run_single_core_web(self):
-        self._test_undistributed("User Recordings Ribbon", 1, True)
-
-
-    def test_run_multi_core_no_web(self):
-        self._test_multi_core("User Recordings Ribbon", 1, False)
-
-    def test_run_multi_core_web(self):
-        self._test_multi_core("User Recordings Ribbon", 1, True)
-
+    def test_run_multi_core_playback(self):
+        self._test_multi_core_undistributed_playback(PlaybackRel.Top_N_Playback, "HLS", 0)
 
     def test_grab_ui_request_distribution_stats(self):
         self._basic_setup()
         request_info_df = self.load_runner._get_ui_request_distribution_stats()
         requests = request_info_df["Total"]["num requests"]
         self.assertNotEqual(requests, 0, "No requests where sent out")
-
-
 
     def test_grab_ui_exception_info(self):
         self._basic_setup()
@@ -41,12 +42,10 @@ class TestLoadRunner(APITest):
         info = request_info_df["Count"].tail(1) #this will exist if we got the correct resposne back
         self.assertTrue(True)
 
-
     def test_ui_info(self):
         self._basic_setup()
         info = self.load_runner._get_ui_info()
-        print("huh")
-
+        self.assertTrue(True)
 
     def test_reset_stats(self):
         self._basic_setup()
@@ -58,22 +57,17 @@ class TestLoadRunner(APITest):
         self.assertNotEqual(pre_stats, 0, "No requests where sent out")
         self.assertGreater(pre_stats, post_stats, "You did not correctly reset the stats through the ui")
 
-
-
-
     def test_stop_ui_test(self):
         self._basic_setup()
         self.load_runner._stop_ui_test()
         time.sleep(1)
         state = self.load_runner.state
-        self.assertEqual("stopped", state, "The Locust UI was not stopped correctly")
-
+        self.assertEqual("setup", state, "The Locust UI was not stopped correctly")
 
     def test_start_ui_load(self):
         users, hatchrate = (100, 40)
         self._basic_setup()
         self._assert_adjust_test(users, hatchrate)
-
 
     def test_multi_stage_load(self):
         user_1, hatchrate_1 = (200, 60)
@@ -86,12 +80,13 @@ class TestLoadRunner(APITest):
 
 
 
-
-
+########################################################################################################################
+##########################################  HELPER FUNCS  ##############################################################
+########################################################################################################################
 
 
     def _basic_setup(self):
-        self._test_undistributed("User Recordings Ribbon", 1, True)
+        self._test_undistributed_api("User Recordings Ribbon", False, kill_at_end=False)
         time.sleep(3)
 
     def _assert_adjust_test(self, users, hatchrate):

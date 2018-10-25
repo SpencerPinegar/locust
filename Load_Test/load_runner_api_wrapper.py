@@ -2,18 +2,23 @@ from requests.exceptions import ConnectionError
 from Load_Test.exceptions import (TestAlreadyRunning, WebOperationNoWebTest,
                                    LocustUIUnaccessible, SlaveInitilizationException,
                                   LostTestRunnerAPIObject)
-from Load_Test.config import Config
-from Load_Test.load_runner import LoadRunner
+from Load_Test.Data.config import Config
+from Load_Test.load_runner import LoadRunner, locust_file_paths, PLAYBACK_LOCUST_FILE
+
 import time
 import os
 from Load_Test.automated_test_case import AutomatedTestCase
-
+from Load_Test.Data.route_relations import RoutesRelation
 
 
 API_Load_Test_Dir = os.path.dirname(os.path.abspath(__file__))
 
 
 class LoadRunnerAPIWrapper(LoadRunner):
+    """
+    This is a class that exposes api functions to the world and conceals the underlying complex load_runner.
+    It is able to remember it's own state by keeping a single load runner as a class value
+    """
     # TODO make come from config
 
     Stats_Folder = os.path.join(API_Load_Test_Dir, "Stats")
@@ -25,22 +30,21 @@ class LoadRunnerAPIWrapper(LoadRunner):
     web_api_host_info = ("0.0.0.0", 5000)
     test_runner_communication_info = ("0.0.0.0", 8000)
 
-    Current_Benchmark_Test_Msg = u"A benchmark test is currently running on this server - It will not be available through the UI"
-    Current_Manuel_Test_Msg = u"A manuel test is currently running on this server - view it through the UI"
-    Setup_Benchmark_Test_Msg = u"A benchmark test is setup on this server - It will run and not be available through the UI"
-    Setup_Manuel_Test_Msg = u"A manuel test is setup on this server - view/run it through the UI"
+    Current_Automated_Test_Msg = u"An automated test is currently running on this server - view it through the UI"
+    Current_Custom_Test_Msg = u"A custom test is currently running on this server - view it through the UI"
     TEST_API_WRAPPER = None
     Extension = '/LoadServer'
 
 
 
+
     @classmethod
     def setup(cls):
+
         config = Config()
-        load_runner_api_wrapper = LoadRunnerAPIWrapper(LoadRunnerAPIWrapper.master_host_info, LoadRunnerAPIWrapper.web_ui_host_info,
-                                 LoadRunnerAPIWrapper.Slave_Locust_File, LoadRunnerAPIWrapper.Master_Locust_File,
-                                 config)
-        LoadRunnerAPIWrapper.TEST_API_WRAPPER =load_runner_api_wrapper
+        load_runner_api_wrapper = LoadRunnerAPIWrapper(LoadRunnerAPIWrapper.master_host_info,
+                                                       LoadRunnerAPIWrapper.web_ui_host_info, config)
+        LoadRunnerAPIWrapper.TEST_API_WRAPPER = load_runner_api_wrapper
 
     @classmethod
     def teardown(cls):
@@ -54,105 +58,90 @@ class LoadRunnerAPIWrapper(LoadRunner):
     def is_automated_test(self):
         return self.automated_test != None
 
-    def __init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config):
-        LoadRunner.__init__(self, master_host_info, web_ui_info, slave_locust_file, master_locust_file, config)
+    def __init__(self, master_host_info, web_ui_info, config):
+        LoadRunner.__init__(self, master_host_info, web_ui_info, config)
         self.automated_test = None
 
 
     def stop_tests(self):
         self._kill_test()
 
-    def is_running(self, conn_error_raise=False):
-        if conn_error_raise:
-            to_catch = (LocustUIUnaccessible, SlaveInitilizationException)
-        else:
-            to_catch = (LocustUIUnaccessible, ConnectionError, SlaveInitilizationException)
-        try:
-            is_running = self._is_running()
-            if not is_running:
-                test_type = None
-                return is_running, test_type
-            if self.no_web:
-                test_type = self.Current_Benchmark_Test_Msg
-            else:
-                test_type = self.Current_Manuel_Test_Msg
-        except to_catch as e:
-            is_running = False
-            test_type = None
-            return is_running, test_type
-        else:
-            return is_running, test_type
+    def is_running(self):
+        return self._is_running()
 
-    def is_setup(self):
-        try:
-            is_running, type = self.is_running(conn_error_raise=True)
-            if is_running:
-                is_setup = False
-                test_type = type
-                return is_setup, test_type
 
-            is_setup = self._is_setup()
-            if not is_setup:
-                test_type = None
-                return is_setup, test_type
-            if not is_setup:
-                return is_setup, None
-            if self.no_web:
-                test_type = self.Setup_Benchmark_Test_Msg
-            else:
-                test_type = self.Setup_Manuel_Test_Msg
-        except (SlaveInitilizationException, LocustUIUnaccessible, ConnectionError) as e:
-            is_setup = False
-            test_type = None
-            return is_setup, test_type
-        else:
-            return is_setup, test_type
 
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
         # TODO find a way to distribute segemented test data when running
         pass
 
-    def setup_manuel_test(self, api_call_weight, env, node, version, min, max):
+
+
+
+    def custom_playback_test(self, client, playback_route, quality, codecs, users=None, dvr=None, days_old=None,
+                             stat_int=2):
         self.__raise_if_running()
         self.stop_tests()
-        self._verify_params(api_call_weight, env, version, node)
-        file_prefix = "Manuel"
-        self._run_multi_core(api_call_weight, env, node, version, min, max,
-                                          stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
-                                          log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                          log_level="ERROR")
+        self._verify_playback_options(client, playback_route, quality, codecs, users, dvr, days_old, stat_int)
+        options = self._get_playback_options(client, playback_route, quality, codecs, users, dvr, days_old)
+        self._run_multi_core(options, locust_file_paths.master, locust_file_paths.playback)
 
-    def setup_and_start_benchmark_test(self, api_call_weight, env, node, version, min, max, num_clients, hatch_rate,
-                                       run_time,
-                                       reset_stats):
+
+
+
+    def custom_api_test(self, api_info, env, node, max_request, stat_interval=None,
+                        assume_tcp=False, bin_by_resp=False):
         self.__raise_if_running()
         self.stop_tests()
-        self._verify_params(api_call_weight, env, version, node)
-        file_prefix = "Benchmark"
-        self._run_multi_core(api_call_weight, env, node, version, min, max,
-                                          stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
-                                          log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
-                                          log_level="ERROR",
-                                          no_web=True, num_clients=num_clients, hatch_rate=hatch_rate,
-                                          run_time=run_time, reset_stats=reset_stats)
+        self._verify_api_params(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
+        file_prefix = "Custom API"
+        options = self._get_api_options(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
+        self._run_multi_core(options, locust_file_paths.master, locust_file_paths.api,
+                             stats_file_name=file_prefix, stats_folder=LoadRunnerAPIWrapper.Stats_Folder,
+                             log_file_name=file_prefix, log_folder=LoadRunnerAPIWrapper.Logs_Folder,
+                             log_level="ERROR")
 
 
 
-    def start_ramp_up(self, locust_count, hatch_rate, first_start=True):
+    def custom_api_to_failure(self, api_call_weight, env, node, stat_interval=None):
+        self.__raise_if_running()
+        self.stop_tests()
+        #Here are some constants of this test
+        file_prefix = "Failure API"
+        max_reqeust = False
+        assume_tcp = False
+        bin_by_resp = True
+        self._verify_api_params(api_call_weight, env, node, max_reqeust, stat_interval, assume_tcp, bin_by_resp)
+
+
+
+
+
+
+    def run_automated_test_case(self, setup_name, procedure_name):
+        #TODO implement way to run benchmark test
+        self.__raise_if_running()
+        self.stop_tests()
+        #way to verify setup and procedure name
+        #way to get all information and format it into the _run_nulti_core method
+        file_prefix = "Automated"
+        self.automated_test = AutomatedTestCase(setup_name, procedure_name,
+                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER,
+                                                LoadRunnerAPIWrapper.Stat_Interval)
+        self.automated_test.run()
+
+
+    def start_ramp_up(self, locust_count, hatch_rate, first_start=False):
         state = self.state
         if state == "idle":
             raise WebOperationNoWebTest("The web UI has not been set up yet")
-        elif state == "running no web":
-            raise TestAlreadyRunning(self.Current_Benchmark_Test_Msg)
-        elif first_start:
-            if state in ["ready", "stopped"]:
+        elif state == "setup":
+            self._start_ui_load(locust_count, hatch_rate)
+        else:
+            if state == "running" and not first_start:
                 self._start_ui_load(locust_count, hatch_rate)
             else:
-                raise TestAlreadyRunning(self.Current_Manuel_Test_Msg)
-        else:
-            self._start_ui_load(locust_count, hatch_rate)
-
-
+                raise TestAlreadyRunning(self.Current_Custom_Test_Msg)
 
 
     def get_stats(self):
@@ -168,25 +157,21 @@ class LoadRunnerAPIWrapper(LoadRunner):
 
 
     def reset_stats(self):
-        if self.is_running() and not self.no_web:
+        if self.is_running():
             self._reset_stats()
         else:
             raise WebOperationNoWebTest("The web UI has not been set up and started yet")
 
 
-
-    def run_automated_test_case(self, setup_name, procedure_name):
-        self.automated_test = AutomatedTestCase(setup_name, procedure_name,
-                                                LoadRunnerAPIWrapper.TEST_API_WRAPPER,
-                                                LoadRunnerAPIWrapper.Stat_Interval)
-        self.automated_test.run()
-
-
-
-
     def __raise_if_running(self):
-        test_running, msg = self.is_running()
+        test_running = self.is_running()
         if test_running:
-            raise TestAlreadyRunning(msg)
+            if self.is_automated_test:
+                raise TestAlreadyRunning(LoadRunnerAPIWrapper.Current_Automated_Test_Msg)
+            else:
+                raise TestAlreadyRunning(LoadRunnerAPIWrapper.Current_Custom_Test_Msg)
+
+
+
 
 
