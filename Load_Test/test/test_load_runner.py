@@ -3,10 +3,152 @@ import time
 
 from Load_Test.Data.route_relations import APIRoutesRelation as APIRel, PlaybackRoutesRelation as PlaybackRel
 from Load_Test.Misc.locust_test import LocustTest
+from Load_Test.exceptions import TestAlreadyRunning
+from requests.exceptions import ConnectionError
+from Load_Test.load_runner import LoadRunner
+from unittest import TestCase
+from Load_Test.Data.config import Config
+from Load_Test.Misc.utils import build_api_info
+
+class TestLoadRunnerAPI(LocustTest):
+
+    def setUp(self):
+        super(TestLoadRunnerAPI, self).setUp()
+        self.load_runner.default_2_cores = True
 
 
+    def tearDown(self):
+        self._kill_test()
 
-class TestLoadRunner(LocustTest):
+
+    def test_not_setup_while_running(self):
+        self._setup_and_start_custom_api_test()
+        self._assert_not_setup()
+
+    def test_is_test_running_not_running(self):
+        self._assert_not_setup()
+        self._assert_not_running()
+
+    def test_start_custom_check_ui_page_assert_running(self):
+        self._setup_and_start_custom_api_test()
+        self._assert_running()
+
+    def test_start_custom_start_test_assert_running_wont_start_another_test(self):
+        self._setup_and_start_custom_api_test()
+        self._assert_running()
+        self._assert_wont_start_while_running()
+        self._assert_running()
+
+    def test_start_custom_with_already_running_kill_then_start(self):
+        self._setup_and_start_custom_api_test()
+        self._assert_running()
+        self._assert_wont_start_while_running()
+        self._assert_running()
+        self._kill_test()
+        self._assert_not_setup()
+        self._setup_and_start_custom_api_test()
+        self._assert_running()
+
+    def test_start_automated_assert_setup_and_running(self):
+        self._setup_and_start_automated_test()
+        self._assert_running()
+
+    def test_start_automated_test_assert_running_wont_start_another_test(self):
+        self._setup_and_start_automated_test()
+        self._assert_running()
+        self._assert_wont_start_while_running()
+        self._assert_running()
+
+    def test_start_automated_test_assert_running_kill_then_start(self):
+        self._setup_and_start_automated_test()
+        self._assert_running()
+        self._assert_wont_start_while_running()
+        self._assert_running()
+        self._kill_test()
+        self._assert_not_setup()
+        self._assert_not_running()
+        self._setup_and_start_automated_test()
+        self._assert_running()
+
+    def test_test_route_as_api_route(self):
+        self._setup_and_start_custom_api_test(self.test_api_call)
+        self._assert_running()
+        self._kill_test()
+
+    def test_get_stats(self):
+        self._setup_and_start_custom_api_test()
+        stats = self.load_runner.get_stats()
+        requests = stats["num requests"]
+        self.assertTrue(True)
+
+    def test_run_basic_automated_test_case(self):
+        setup, procedure = ("Node User Recordings", "Test Basic")
+        self._setup_and_start_automated_test(setup, procedure)
+
+    def test_run_multi_stage_automated_test_case(self):
+        setup, procedure = ("Node User Recordings", "Test Level Platue Level Back Down")
+        self._setup_and_start_automated_test(setup, procedure)
+
+    # TODO: FINISH
+
+########################################################################################################################
+##########################################  HELPER FUNCS  ##############################################################
+########################################################################################################################
+
+
+    def _setup_and_start_custom_api_test(self, api_call=None, max_request=False):
+        if api_call is None:
+            api_call = self.api_call
+        self.load_runner.custom_api_test(api_call, self.env, self.node, max_request, 2)
+        time.sleep(2)
+        self.load_runner.start_ramp_up(self.n_clients, self.hatch_rate)
+
+    def _setup_and_start_automated_test(self, setup=None, procedure=None):
+        setup = self.setup_name if setup is None else setup
+        procedure = self.procedure_name if procedure is None else procedure
+        self.load_runner.run_automated_test_case(setup, procedure)
+        test_proc = self.config.get_test_procedure(procedure)
+        time_for_test = 0
+        for test in test_proc:
+            try:
+                hatch_time = (test["final user count"] - test["init user count"]) / test["hatch rate"]
+            except ZeroDivisionError:
+                hatch_time = 0
+            time_for_test += int(test["time at load"]) + hatch_time
+        time.sleep(1.2 * time_for_test)
+
+    def _kill_test(self):
+        self.load_runner.stop_tests()
+
+    def _assert_setup(self):
+        is_setup = self.load_runner.state
+        self.assertEqual("setup", is_setup,
+                         "The test did not setup correctly")
+
+    def _assert_running(self):
+        is_running = self.load_runner.is_running()
+        self.assertEqual(True, is_running, "The test did not start correctly")
+
+    def _assert_not_setup(self):
+        the_state = self.load_runner.state
+        self.assertNotEqual("setup", the_state, "The test threads where not killed properly")
+
+    def _assert_not_running(self):
+        is_running = self.load_runner.is_running()
+        self.assertEqual(False, is_running, "The test was not ended killed properly and is still running")
+
+    def _assert_wont_start_while_running(self):
+        with self.assertRaises(TestAlreadyRunning):
+            self._setup_and_start_custom_api_test()
+        with self.assertRaises(TestAlreadyRunning):
+            self._setup_and_start_automated_test()
+
+    def _assert_automated_test_file(self, file):
+        # TODO: create this function
+        pass
+
+
+class TestLoadRunnerUnderTheHood(LocustTest):
     """
     These Tests are dependnet on the test_api_locust suit -- especially the test_user_recordigns_ribbon_route tests
     """
@@ -22,6 +164,12 @@ class TestLoadRunner(LocustTest):
 
     def test_run_multi_core_api_max_request(self):
         self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, True)
+
+    def test_run_multi_core_api_assume_tcp(self):
+        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, False, True)
+
+    def test_run_multi_core_api_bin_by_resp(self):
+        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, False, False, True)
 
     def test_run_single_core_playback(self):
         self._test_undistributed_playback(PlaybackRel.Top_N_Playback, "HLS", 0)
@@ -86,7 +234,7 @@ class TestLoadRunner(LocustTest):
 
 
     def _basic_setup(self):
-        self._test_undistributed_api("User Recordings Ribbon", False, kill_at_end=False)
+        self._test_undistributed_api("User Recordings Ribbon", False)
         time.sleep(3)
 
     def _assert_adjust_test(self, users, hatchrate):

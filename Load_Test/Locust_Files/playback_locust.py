@@ -1,19 +1,17 @@
-import random
 from locust import TaskSet, Locust
+import os
 from Load_Test.Players import hlsplayer as HLS, dashplayer as DASH, qmxplayer as QMX
 from Load_Test.Data.request_pool import RequestPoolFactory
 from Load_Test.Data.config import Config
 from Load_Test.Data.route_relations import PlaybackRoutesRelation
 from Load_Test.Misc.environment_wrapper import PlaybackEnvironmentWrapper as PlaybackEnv
 import locust.stats
-import os
-import sys
 #from setproctitle import setproctitle
 
 SECONDS = 1000  # ms in seconds
 playback_vars = PlaybackEnv.load_env()
 #setproctitle("-LOCUST Playback Slave {}".format(playback_vars.slave_index))
-
+print("IMPORTED SUCCESFULLY")
 #TODO: Allow VODPlayer to play a resource that is popped from a CSV file containing URL's
 
 def get_client_type(client_type):
@@ -36,8 +34,9 @@ class PlaybackBehavior(TaskSet):
     def setup(self):
 
         print(playback_vars)
-
+        slave_int = int(os.environ.get("SLAVE____INT"))
         PlaybackBehavior.env = "DEV2" #env_wrapper.get("ENV") - We only want to playback test DEV2 but maybe not forever
+        playback_vars.slave_index = slave_int
         locust.stats.CSV_STATS_INTERVAL_SEC = playback_vars.stat_interval
         config = Config()
         PlaybackBehavior.pool_factory = RequestPoolFactory(config, playback_vars.comp_index, playback_vars.max_comp_index,
@@ -81,7 +80,7 @@ class PlaybackBehavior(TaskSet):
     def __is_another_qvt(self):
         return len(PlaybackBehavior.qvt_pool) > 0
 
-class PlaybackLocust(Locust):
+class PlaybackUser(Locust):
     task_set = PlaybackBehavior
     min_wait = 0 * SECONDS
     max_wait = 0 * SECONDS

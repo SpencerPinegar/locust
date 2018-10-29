@@ -10,6 +10,9 @@ class EnvironmentWrapper:
     WRAP_INFO_KEY = "WRAP_OPTIONS"
 
     def __init__(self, env, options, update):
+        os.environ.setdefault('OBJC_DISABLE_INITIALIZE_FORK_SAFETY', 'YES')
+        os.environ['no_proxy'] = '127.0.0.1,localhost,0.0.0.0'
+
         self.__env = env
         info = self.__env.get(EnvironmentWrapper.WRAP_INFO_KEY)
         self._options = {} if info is None else yaml.safe_load(info)
@@ -45,6 +48,8 @@ class EnvironmentWrapper:
         self.__env[EnvironmentWrapper.WRAP_INFO_KEY] = json.dumps(self._options)
         return self.__env
 
+    def stamp_env(self):
+        os.environ[EnvironmentWrapper.WRAP_INFO_KEY] = json.dumps(self._options)
 
 
 class DistributedLocustEnvironmetWrapper(EnvironmentWrapper):
@@ -215,3 +220,5 @@ class PlaybackEnvironmentWrapper(DistributedLocustEnvironmetWrapper):
        }
        DistributedLocustEnvironmetWrapper.__init__(self, stat_int, computer_index, loc_slave_index, max_comp_index,
                                                    max_loc_slave_index, size, update, **options)
+
+

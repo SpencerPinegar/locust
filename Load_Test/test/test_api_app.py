@@ -1,5 +1,6 @@
-from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
 from Load_Test.Misc.locust_test import LocustTest
+from unittest import TestCase
+from Load_Test.load_runner import LoadRunner
 import random
 import backoff
 import os
@@ -9,22 +10,33 @@ from multiprocessing import Process
 import requests
 from main import main_func
 from Load_Test.load_server_client import LoadServerClient
-
-class TestAPIApp(LocustTest):
+from Load_Test.Misc.utils import build_api_info
+class TestAPIApp(TestCase):
 
     def setUp(self):
-        super(TestAPIApp, self).setUp()
-        self.api_host_info = LoadRunnerAPIWrapper.web_api_host_info
-        self.extension = LoadRunnerAPIWrapper.Extension
+        #super(TestAPIApp, self).setUp()
+        self.api_host_info = LoadRunner.web_api_host_info
+        self.extension = LoadRunner.Extension
         self.server = Process(target=main_func, args=(True, LoadServerClient.local))
         self.server.start()
+        self.api_call = {"User Recordings Ribbon": {
+                                                    1: build_api_info(1, 20, 5, 30)
+                                                    }
+                        }
+        self.env = "DEV2"
+        self.node = 0
+        self.max_request = False
+        self.n_clients = 240
+        self.hatch_rate = 120
+        self.setup_name = "VIP User Recordings"
+        self.procedure_name = "VIP Benchmark"
 
 
     def tearDown(self):
         self._assert_stop_test()
         self.server.terminate()
         self.server.join()
-        super(TestAPIApp, self).tearDown()
+        #super(TestAPIApp, self).tearDown()
 
 
     def test_ping_on(self):
@@ -43,8 +55,8 @@ class TestAPIApp(LocustTest):
         self._assert_not_running()
 
 
-    def test_is_running_custom_running(self):
-        self._assert_start_custom_test()
+    def test_is_running_custom_api_running(self):
+        self._assert_start_custom_api_test()
         self._assert_is_running()
 
     def test_is_running_automated_running(self):
@@ -53,21 +65,21 @@ class TestAPIApp(LocustTest):
 
 
     def test_start_custom_test_custom_test_running(self):
-        self._assert_start_custom_test()
-        self._assert_failed_custom_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Custom_Test_Msg)
+        self._assert_start_custom_api_test()
+        self._assert_failed_custom_start_other_test_already_running(LoadRunner.Current_Custom_Test_Msg)
 
 
     def test_start_custom_test_automated_test_running(self):
         self._assert_start_automated_test()
-        self._assert_failed_custom_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Automated_Test_Msg)
+        self._assert_failed_custom_start_other_test_already_running(LoadRunner.Current_Automated_Test_Msg)
 
     def test_start_automated_test_custom_test_running(self):
-        self._assert_start_custom_test()
-        self._assert_failed_automated_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Custom_Test_Msg)
+        self._assert_start_custom_api_test()
+        self._assert_failed_automated_start_other_test_already_running(LoadRunner.Current_Custom_Test_Msg)
 
     def test_start_automated_test_automated_test_running(self):
         self._assert_start_automated_test()
-        self._assert_failed_automated_start_other_test_already_running(LoadRunnerAPIWrapper.Current_Automated_Test_Msg)
+        self._assert_failed_automated_start_other_test_already_running(LoadRunner.Current_Automated_Test_Msg)
 
 
     #INVALID PARAMS
@@ -109,7 +121,7 @@ class TestAPIApp(LocustTest):
 
 
     def _assert_custom_start_incorrect_params_test_run(self, test_msg, **kwargs):
-        expected_params = self.__get_start_custom_params(**kwargs)
+        expected_params = self.__get_start_custom_api_params(**kwargs)
         test_id, response = self.__remote_api_call("startCustomTest", expected_params)
         expected_error = {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
@@ -118,7 +130,7 @@ class TestAPIApp(LocustTest):
 
 
     def _assert_failed_custom_start_other_test_already_running(self, test_msg):
-        expected_params = self.__get_start_custom_params()
+        expected_params = self.__get_start_custom_api_params()
         the_id, response = self.__remote_api_call("startCustomTest", expected_params)
         self.__assert_error(response, the_id, {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
@@ -135,7 +147,7 @@ class TestAPIApp(LocustTest):
     def _assert_start_automated_test(self, **kwargs):
         expected_params = self.__get_start_automated_params(**kwargs)
         call_id, response = self.__remote_api_call("startAutomatedTest", expected_params)
-        self.__assert_success(response, call_id, [True, LoadRunnerAPIWrapper.Current_Automated_Test_Msg])
+        self.__assert_success(response, call_id, [True, LoadRunner.Current_Automated_Test_Msg])
 
 
     def _assert_stop_test(self):
@@ -146,9 +158,9 @@ class TestAPIApp(LocustTest):
             pass
 
 
-    def _assert_start_custom_test(self):
-        expected_params = self.__get_start_custom_params()
-        call_id, respone = self.__remote_api_call("startCustomTest", expected_params)
+    def _assert_start_custom_api_test(self):
+        expected_params = self.__get_start_custom_api_params()
+        call_id, respone = self.__remote_api_call("startCustomAPITest", expected_params)
         self.__assert_success(respone, call_id, True)
 
 
@@ -200,14 +212,14 @@ class TestAPIApp(LocustTest):
 
 
 
-    def __get_start_custom_params(self, **kwargs):
+    def __get_start_custom_api_params(self, **kwargs):
         api_call = kwargs["api_call"] if "api_call" in kwargs.keys() else self.api_call
         env = kwargs["env"] if "env" in kwargs.keys() else self.env
         node = kwargs["node"] if "node" in kwargs.keys() else self.node
         max_request = kwargs["max_request"] if "max_request" in kwargs.keys() else self.max_request
         n_clients = kwargs["num_users"] if "num_users" in kwargs.keys() else self.n_clients
         hatch_rate = kwargs["hatch_rate"] if "hatch_rate" in kwargs.keys() else self.hatch_rate
-        stat_interval = kwargs["stat_interval"] if "stat_interval" in kwargs.keys() else LoadRunnerAPIWrapper.Stat_Interval
+        stat_interval = kwargs["stat_interval"] if "stat_interval" in kwargs.keys() else LoadRunner.Stat_Interval
         assume_tcp = kwargs["assume_tcp"] if "assume_tcp" in kwargs.keys() else False
         bin_by_resp = kwargs["bin_by_resp"] if "bin_by_resp" in kwargs.keys() else False
         expected_params = {
@@ -246,7 +258,9 @@ class TestAPIApp(LocustTest):
         web_api_host = self.api_host_info[0]
         web_api_port = self.api_host_info[1]
         if web_api_host in["localhost", "127.0.0.1", "0.0.0.0"]:
-            os.environ['no_proxy'] = '127.0.0.1,localhost'
+            os.environ['no_proxy'] = '127.0.0.1,localhost,0.0.0.0'
+        else:
+            os.environ['no_proxy'] = '*'
         host = "http://{web_api_host}:{web_api_port}".format(web_api_host=web_api_host, web_api_port=web_api_port)
         host = host + self.extension
 

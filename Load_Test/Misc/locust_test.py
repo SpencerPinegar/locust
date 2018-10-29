@@ -6,10 +6,8 @@ import os
 import pandas
 import time
 from Load_Test.load_runner import locust_file_paths
-from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
 from Load_Test.Data.data_factory import DataFactory
 from Load_Test.Misc.utils import build_api_info
-
 from collections import namedtuple
 import sys
 
@@ -77,27 +75,27 @@ class LocustTest(TestCase):
 
 
 
-    def _test_undistributed_playback(self, route, client, quality, codecs=[], assert_results = True, kill_at_end=True):
-        self.__empty_test_stats_folder_and_assert_empty()
+    def _test_undistributed_playback(self, route, client, quality, codecs=[], assert_results = True):
         playback_options = self.__get_default_playback_options(route, client, quality, codecs, self.stat_int, 0, 0)
-        self.__run_playback_locust(playback_options, False, kill_at_end)
-        self.__check_test_stats_folder(assert_results)
+        self.__run_playback_locust(playback_options, False)
+        if assert_results:
+            self.__assert_successful_locust_run()
 
 
-    def _test_multi_core_undistributed_playback(self, route, client, quality, codecs=[], assert_results=True, kill_at_end=True):
+    def _test_multi_core_undistributed_playback(self, route, client, quality, codecs=[], assert_results=True):
         self.__force_multi_core()
-        self.__empty_test_stats_folder_and_assert_empty()
         playback_options = self.__get_default_playback_options(route, client, quality, codecs, self.stat_int, 0, 0)
-        self.__run_playback_locust(playback_options, True, kill_at_end)
-        self.__check_test_stats_folder(assert_results)
+        self.__run_playback_locust(playback_options, True)
+        if assert_results:
+            self.__assert_successful_locust_run()
 
     def _test_multi_core_distributed_playback(self, route, client, quality, codecs=[], assert_results=True, kill_at_end=True):
         pass
 
 
     #TODO change back from running v1, v2, v4, v5
-    def _test_undistributed_api(self, route, max_request, version = None, assert_results=True, kill_at_end=True):
-        self.__empty_test_stats_folder_and_assert_empty()
+    def _test_undistributed_api(self, route, max_request, assume_tcp=False, bin_by_resp=False, version = None,
+                                assert_results=True):
         try:
             lb, ub = self.config.get_api_route_normal_min_max(route)
         except KeyError:
@@ -109,15 +107,17 @@ class LocustTest(TestCase):
         # for version in versions:
         #     route_api_call_weight.setdefault(int(version), build_api_info(self.weight, self.size, lb, ub))
         # api_call_route_info = {route: route_api_call_weight}
-        self.__run_api_locust(api_call_route_info, max_request, False, kill_at_end=kill_at_end)
-        self.__check_test_stats_folder(assert_results)
+        self.__run_api_locust(api_call_route_info, max_request, assume_tcp, bin_by_resp, False)
+        if assert_results:
+            self.__assert_successful_locust_run()
 
-    def _test_multi_core_undistributed_api(self, route, max_request, version=None, assert_results=True, kill_at_end=True):
+    def _test_multi_core_undistributed_api(self, route, max_request, assume_tcp=False, bin_by_resp=False, version=None,
+                                           assert_results=True):
         self.__force_multi_core()
-        self.__empty_test_stats_folder_and_assert_empty()
         api_call_route_info = self.__get_default_api_route_info(route, version)
-        self.__run_api_locust(api_call_route_info, max_request, True, kill_at_end)
-        self.__check_test_stats_folder(assert_results)
+        self.__run_api_locust(api_call_route_info, max_request,assume_tcp, bin_by_resp, True)
+        if assert_results:
+            self.__assert_successful_locust_run()
 
     def _test_multi_core_distributed_api(self, route, max_request, version=None, assert_results=True, kill_at_end=True):
         pass
@@ -125,29 +125,7 @@ class LocustTest(TestCase):
     def _is_multi_core_capable(self):
         return self.load_runner.cores > 1
 
-    def __check_test_stats_folder(self, assert_results):
-        requests_file = None
-        distribution_file = None
-        for file in os.listdir(LocustTest.test_stats_folder):
-            if file.endswith("_requests.csv"):
-                requests_file = os.path.join(LocustTest.test_stats_folder, file)
-            elif file.endswith("_distribution.csv"):
-                distribution_file = os.path.join(LocustTest.test_stats_folder, file)
-        self.assertNotEqual(None, requests_file, "No requests file was found in the test directory")
-        self.assertNotEqual(None, distribution_file, "The distribution file was not found in the test direcotyr")
-        loaded_r_file = pandas.read_csv(requests_file, delimiter=',', quotechar='"', index_col=False)
-        if assert_results:
-            self.assertEqual(loaded_r_file["# failures"].tail(1).values[0], 0, "There were more than 0 failures")
-            self.assertNotEqual(loaded_r_file["# requests"].tail(1).values[0], 0, "No requests where sent out")
-            self.assertGreaterEqual(loaded_r_file["# requests"].tail(1).values[0], self.min_requests,
-                                    "There were not enough requests sent out")
 
-    def __empty_test_stats_folder_and_assert_empty(self):
-        for file in os.listdir(LocustTest.test_stats_folder):
-            os.remove(os.path.join(LocustTest.test_stats_folder, file))
-        self.assertEqual(len(os.listdir(LocustTest.test_stats_folder)), 0,
-                         "The test stats folder was not properly emptied")
-        self.assertEqual(os.listdir(LocustTest.test_stats_folder), [], "The test_stats folder did not start empty")
 
 
     def __test_api_ratios(self, full_api_route, result_file):
@@ -218,38 +196,33 @@ class LocustTest(TestCase):
         else:
             self.load_runner.default_2_cores = True
 
-    def __run_api_locust(self, api_info, max_request, multicore, kill_at_end):
+    def __run_api_locust(self, api_info, max_request, assume_tcp, bin_by_resp, multicore):
         n_clients = 300 if max_request else self.n_clients
-        options = self.load_runner._get_api_options(api_info, self.env, self.node, self.max_request,
-                                                        LoadRunnerAPIWrapper.Stat_Interval,
-                                                        self.assume_tcp, self.bin_by_resp)
+        options = self.load_runner._get_api_options(api_info, self.env, self.node, max_request,
+                                                        LoadRunner.Stat_Interval, assume_tcp, bin_by_resp)
         if multicore:
-            self.load_runner._run_multi_core(options, locust_file_paths.master,
+            self.load_runner._run_multi_core(options, locust_file_paths.web_host,
                                              locust_file_paths.api, stats_file_name="test",
                                              stats_folder=LocustTest.test_stats_folder)
             self.assertEqual(True, self.load_runner.slaves_loaded, "not all the slaves loaded correctly")
         else:
             self.load_runner._run_single_core(options, locust_file_paths.api,
                                               stats_file_name="test", stats_folder=LocustTest.test_stats_folder)
-        #self.load_runner._start_ui_load(n_clients, self.hatch_rate)
-        time.sleep(3)
-        if kill_at_end:
-            info_list, return_code_list = self.load_runner._kill_test()
-            print(info_list)
-            for index in range(len(info_list)):
-                self.assertEqual(0, return_code_list[index], str(info_list[index]))
+        self.load_runner._start_ui_load(n_clients, self.hatch_rate)
+        time.sleep(20)
 
 
 
 
 
-    def __run_playback_locust(self, options, multicore, kill_at_end):
+
+    def __run_playback_locust(self, options, multicore):
         if options.action == "Top N Playback":
             n_clients = len(self.PoolFactory.get_top_n_channels_in_last_day())
         else:
             n_clients = self.n_clients
         if multicore:
-            self.load_runner._run_multi_core(options, locust_file_paths.master,
+            self.load_runner._run_multi_core(options, locust_file_paths.web_host,
                                              locust_file_paths.playback, stats_file_name="test",
                                              stats_folder=LocustTest.test_stats_folder)
             self.assertEqual(True, self.load_runner.slaves_loaded, "not all the slaves loaded correctly")
@@ -257,12 +230,14 @@ class LocustTest(TestCase):
             self.load_runner._run_single_core(options, locust_file_paths.playback,
                                               stats_file_name="test", stats_folder=LocustTest.test_stats_folder)
         self.load_runner._start_ui_load(n_clients, 1)
-        time.sleep(60)
-        if kill_at_end:
-            info_list, return_code_list = self.load_runner._kill_test()
-            print(info_list)
-            for index in range(len(info_list)):
-                self.assertEqual(0, return_code_list[index], str(info_list[index]))
+        time.sleep(24)
 
 
+    def __assert_successful_locust_run(self):
+        stats = self.load_runner.get_stats()
+        failure_rate = stats["fail_ratio"]
+        num_requests = stats['num requests']
+        self.assertGreater(num_requests, 0, "The locust run did not send any requests out")
+        self.assertLess(failure_rate, 5, "The locust run failed 5% or more of requests - Failure Rate: {}%".format(failure_rate))
+        self.assertGreater(num_requests, 100, "The locust run sent out less than 100 requests - Requests: {}".format(num_requests))
 

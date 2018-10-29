@@ -1,11 +1,11 @@
 import json
 import logging
-import os
 
 from locust import HttpLocust, TaskSet
 import locust.stats
 from requests.exceptions import RequestException
-#from setproctitle import setproctitle
+import os
+from setproctitle import setproctitle
 
 from Load_Test.Data.config import Config
 from Load_Test.Data.request_pool import RequestPoolFactory
@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 SECONDS = 1000
 Info = namedtuple("Info", ["json", "url"])
 MARK_AS_FAIL = "!FAIL!"
-api_wrap = APIWrap.load_env()
+
 #setproctitle("-LOCUST API Slave {}".format(api_wrap.slave_index))
 # TODO: ADD POOLS FOR CREATE/DELETE OPERATIONS -- create/delete recordings, create/delete recording rules
 
@@ -152,8 +152,10 @@ class APITasks(TaskSet):
 
     @classmethod
     def setup_based_on_env_vars(cls):
-
-
+        slave_int = int(os.environ.get("SLAVE____INT"))
+        api_wrap = APIWrap.load_env()
+        api_wrap.slave_index = slave_int
+        logger.error(str(api_wrap))
         print(api_wrap)
         cls.api_info = force_route_version_to_ints(api_wrap.api_info)
         cls.env = api_wrap.env

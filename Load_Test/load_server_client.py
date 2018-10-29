@@ -4,10 +4,10 @@ import backoff
 from requests.exceptions import ConnectionError
 import os
 import json
-from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.load_runner import LoadRunner
 
 
-extension = LoadRunnerAPIWrapper.Extension
+extension = LoadRunner.Extension
 
 
 
@@ -16,7 +16,7 @@ class LoadServerClient:
     lgen9_host_name = "b-gp2-lgen-9.imovetv.com"
     local = "127.0.0.1"
 
-    def __init__(self, base_url, extension, port=LoadRunnerAPIWrapper.web_api_host_info[1]):
+    def __init__(self, base_url, extension, port=LoadRunner.web_api_host_info[1]):
         self.base_url = base_url
         self.extension = extension
         self.port = port

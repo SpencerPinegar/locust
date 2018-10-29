@@ -5,7 +5,14 @@
 Setups:
 
   Node User Recordings:
-   api call: {"User Recordings Ribbon": 1}
+   api call:
+    User Recordings Ribbon:
+     1:
+      norm_lower: 30
+      norm_upper: 50
+      optional_fields: {}
+      weight: 1
+      size: 50
    env: DEV2
    node: 1
    version: 1
@@ -13,7 +20,14 @@ Setups:
    max: 50
 
   VIP User Recordings:
-    api call: {"User Recordings Ribbon": 1}
+    api call:
+      User Recordings Ribbon:
+        1:
+          norm_lower: 30
+          norm_upper: 50
+          optional_fields: {}
+          weight: 1
+          size: 50
     env: DEV2
     node: 1
     version: 1
@@ -21,14 +35,16 @@ Setups:
     max: 50
 
   Node Network:
-    api call: {Basic Network: 1}
+    api call:
+      Basic Network: {}
     env: DEV2
     node: 1
     min: 45
     max: 50
 
   VIP Network:
-    api call: {Basic Network: 1}
+    api call:
+      Basic Network: {}
     env: DEV2
     node: 1
     min: 45
@@ -202,22 +218,22 @@ Procedures:
 DataBase Settings:
   Environments:
     DEV1:
-      Host: d-gp2-dbpgdvr1.imovetv.com
+      Host: d-gp2-dbpgdvr1master-1
       Port: 5432
     DEV2:
-      Host: d-gp2-dbpgdvr2.imovetv.com
+      Host: d-gp2-dbpgdvr2master-1
       Port: 5432
     DEV3:
-      Host: d-gp2-dbpgdvr3.imovetv.com
+      Host: d-gp2-dbpgdvr3master-1
       Port: 5432
     QA:
-      Host: q-gp2-dbpgdvr1.imovetv.com
+      Host: q-gp2-dbpgdvr1
       Port: 5432
     BETA:
-      Host: b-gp2-dbpgdvr1.imovetv.com
+      Host: b-gp2-dbpgdvr1
       Port: 5432
     BETA2:
-      Host: b-gp2-dbpgdvr2.imovetv.com
+      Host: b-gp2-dbpgdvr2
       Port: 5432
 
   Credentials:

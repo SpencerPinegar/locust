@@ -7,7 +7,6 @@ import csv
 from requests.exceptions import ConnectionError
 import datetime
 from collections import namedtuple
-from Load_Test.Locust_Files.api_locust import MARK_AS_FAIL
 from collections import namedtuple
 
 FailedRoute = namedtuple("FailedRoute", ["route", "perc_98", "percent_under_sla"])
@@ -228,9 +227,9 @@ class AutomatedTestCase:
             api_call = setup_data["api call"]
             env = setup_data["env"]
             node = setup_data["node"]
-            max_request = setup_data["max_request"]
-            assume_tcp  = setup_data["assume_tcp"]
-            bin_by_resp = setup_data["bin_by_resp"]
+            max_request = False #setup_data["max_request"]
+            assume_tcp  = False #setup_data["assume_tcp"]
+            bin_by_resp = False #setup_data["bin_by_resp"]
             test_setup = AutomatedTestCase.TestSetup(api_call, env, node, max_request, assume_tcp, bin_by_resp)
             return test_setup
 

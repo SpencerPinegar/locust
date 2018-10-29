@@ -1,17 +1,18 @@
 
 from Load_Test.api_app import thread_webAPP
-from Load_Test.load_runner_api_wrapper import LoadRunnerAPIWrapper
+from Load_Test.load_runner import LoadRunner
 from Load_Test.Misc.graceful_killer import GracefulKiller
 from Load_Test.load_server_client import LoadServerClient
 import time
 import threading
 from requests.exceptions import ConnectionError
+import os
 
 
 
 def shutdown(host):
     try:
-        client = LoadServerClient(host, LoadRunnerAPIWrapper.Extension)
+        client = LoadServerClient(host, LoadRunner.Extension)
         client.shutdown()
     except ConnectionError:
         return
@@ -20,14 +21,15 @@ def shutdown(host):
 
 
 def main_func(two_cores, host):
-    LoadRunnerAPIWrapper.setup()
-    LoadRunnerAPIWrapper.TEST_API_WRAPPER.default_2_cores = two_cores
+    os.environ.setdefault('OBJC_DISABLE_INITIALIZE_FORK_SAFETY', 'YES')
+    os.environ['no_proxy'] = '127.0.0.1,localhost,0.0.0.0'
     killer = GracefulKiller()
     app_args = {
-        "port": LoadRunnerAPIWrapper.web_api_host_info[1],
-        "host": LoadRunnerAPIWrapper.web_api_host_info[0]
+        "port": LoadRunner.web_api_host_info[1],
+        "host": LoadRunner.web_api_host_info[0]
     }
-    t_webApp = threading.Thread(name='Web App', target=thread_webAPP, args=(LoadRunnerAPIWrapper.Extension,), kwargs=app_args)
+    t_webApp = threading.Thread(name='Web App', target=thread_webAPP, args=(LoadRunner.Extension, two_cores,),
+                                kwargs=app_args)
     t_webApp.setDaemon(True)
     t_webApp.start()
 
@@ -36,13 +38,12 @@ def main_func(two_cores, host):
         time.sleep(1)
         if killer.kill_now:
             shutdown(host)
-            LoadRunnerAPIWrapper.teardown()
             print("exiting")
             exit(0)
 
 
 if __name__ == "__main__":
-    main_func(False)
+    main_func(False, LoadServerClient.lgen8_host_name)
 
 
 

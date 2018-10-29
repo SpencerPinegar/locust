@@ -1,11 +1,11 @@
 import json
 import os
 import sys
+
 if sys.version_info[0] < 3:
     from StringIO import StringIO
 else:
     from io import StringIO
-
 
 import Load_Test.exceptions
 import pandas as pd
@@ -17,18 +17,19 @@ import math
 import datetime
 import time
 from collections import namedtuple
-
+from multiprocessing import Pool
 import requests
 from requests.exceptions import ConnectionError
 import backoff
 from Load_Test.exceptions import (SlaveInitilizationException, InvalidRoute, InvalidAPIEnv, InvalidPlaybackPlayer,
                                   InvalidPlaybackRoute, InvalidAPIVersion, InvalidAPINode, InvalidAPIVersionParams,
-                                  InvalidCodec, OptionTypeError)
+                                  InvalidCodec, OptionTypeError, WebOperationNoWebTest, TestAlreadyRunning)
 from Load_Test.Misc.environment_wrapper import (PlaybackEnvironmentWrapper as PlaybackWrap,
-                                                APIEnvironmentWrapper as APIWrap,)
+                                                APIEnvironmentWrapper as APIWrap, )
 from Load_Test.Misc.utils import clean_stdout, size_key, API_VERSION_KEYS
 from Load_Test.Data.request_pool import RequestPoolFactory
-
+from Load_Test.automated_test_case import AutomatedTestCase
+from Locust_Files import run_locust
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -39,50 +40,82 @@ SECONDS = 1000
 API_LOAD_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 locust_file_prefix = "Locust_Files"
 PROJECT_DIR = os.path.dirname(API_LOAD_TEST_DIR)
-LOCALVENV_DIR = os.path.join(PROJECT_DIR, "localVenv/")
-VENV_DIR = os.path.join(PROJECT_DIR, "venv/")
 
 STATS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Stats")
-LOGS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Logs")
+LOGS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Load_Logs")
 PLAYBACK_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/playback_locust.py")
 API_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/api_locust.py")
 DUMMY_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/master_locust.py")
 
-
-
-
-
-LocustFilePaths = namedtuple('LoucstFilePaths', ["master", "api", "playback"])
+LocustFilePaths = namedtuple('LoucstFilePaths', ["web_host", "api", "playback"])
 
 locust_file_paths = LocustFilePaths(DUMMY_LOCUST_FILE, API_LOCUST_FILE, PLAYBACK_LOCUST_FILE)
+
+
 # TODO: Make salt stack configuration for build out on machines
 
 
 class LoadRunner:
-
     assumed_load_average_added = 1
     assumed_cpu_used = 7
     Stat_Interval = 2
     total_used_cpu_running_threshold = 9  # TODO Find actual threshold
     process_age_limit = 2  # TODO Find process age limit
     Succesful_Test_Start = {"message": "Swarming started", "success": True}
-    Succesful_Test_Stop = { "message": "Test stopped", "success": True}
+    Succesful_Test_Stop = {"message": "Test stopped", "success": True}
     Max_Connection_Time = 5
     CPU_Measure_Interval = .2
     Boot_Time_Delay = 2.5  # TODO Find actual timing
     Max_Process_Wait_Time = 5
     UI_Action_Delay = 2
 
+    # API CONFIG
+    master_host_info = ("0.0.0.0", 5557)
+    web_ui_host_info = ("0.0.0.0", 8089)
+    web_api_host_info = ("0.0.0.0", 5000)
+    test_runner_communication_info = ("0.0.0.0", 8000)
+
+    Current_Automated_Test_Msg = u"An automated test is currently running on this server - view it through the UI"
+    Current_Custom_Test_Msg = u"A custom test is currently running on this server - view it through the UI"
+    TEST_API_WRAPPER = None
+    Extension = '/LoadServer'
+    PERSISTANT_LOAD_RUNNER = None
+
+    @classmethod
+    def setup(cls, config, defualt_2_cores):
+        """
+        This Method sets up an instance of the load runner that can be accessed from the primary process to avoid
+        problems with closure when the api_app is initilized. (It avoids closure by making all references to the class
+        variable go to the same place) e
+        :param config:
+        :param defualt_2_cores:
+        :return:
+        """
+        runner = LoadRunner(LoadRunner.master_host_info, LoadRunner.web_ui_host_info, config)
+        runner.default_2_cores = defualt_2_cores
+        LoadRunner.PERSISTANT_LOAD_RUNNER = runner
+
+    @classmethod
+    def teardown(cls):
+        if not LoadRunner.PERSISTANT_LOAD_RUNNER:
+            pass
+        else:
+            LoadRunner.PERSISTANT_LOAD_RUNNER.stop_tests()
+
+    # This variable is to set the virtualenv for each
+    # Environment_Set = False
+
     # TODO: make a method to ensure the class is not running any proccesses from last run
     # TODO: make sure children is not tainted by automated_test in background
     def __init__(self, master_host_info, web_ui_info, config):
-        self.master = None
+        self.web_host = None
+        self.process_pool = Pool(1)
         self.slaves = []
         self.master_host_info = master_host_info
         self.web_ui_host_info = web_ui_info
         self.config = config
         self.expected_slaves = 0
-        self.__set_virtual_env()
+        # self.__set_virtual_env()
         self._default_2_cores = False
         self._last_write_acton = time.time()
         self._last_boot_time = time.time()
@@ -91,7 +124,6 @@ class LoadRunner:
 
     @property
     def users(self):
-        self.__post_boot_wait()
         if not self.children:
             return -1
         else:
@@ -102,7 +134,6 @@ class LoadRunner:
         if not self.children:
             return "idle"
         else:
-            self.__post_boot_wait()
             try:
                 state = self._ui_state()
             except ConnectionError:
@@ -113,13 +144,6 @@ class LoadRunner:
                 elif state in ["ready", "stopped"]:
                     return "setup"
 
-    @property
-    def last_boot(self):
-        return self._last_boot_time
-
-    @last_boot.setter
-    def last_boot(self, value):
-        max([child.create_time() for child in self.children])
 
     @property
     def last_write(self):
@@ -132,47 +156,43 @@ class LoadRunner:
     @property
     def slaves_loaded(self):
         try:
-            self.__assert_slave_count()
-            return True
+            site_data = self._get_ui_info()
+            slaves_count = site_data["slaves"]
+            if self.expected_slaves is not slaves_count:
+                raise SlaveInitilizationException("All of the slaves where not loaded correctly")
+            else:
+                return True
         except SlaveInitilizationException as e:
             return False
 
     @property
-    def master(self):
-        return self._master
-
-    @master.setter
-    def master(self, value):
-        if not self.children:
-            raise Load_Test.exceptions.LoadRunnerFailedClose(
-                "Overrding Master child process prior to closing it, this will result in zombie processes")
-        if not isinstance(value, sp.Popen) and value is not None:
-            raise ValueError("You cannot assign the master process a value that is not a subprocess or None")
-        self._master = value
-
-    @property
-    def slaves(self):
-        return self._slaves
-
-    @slaves.setter
-    def slaves(self, value):
-        if not self.children:
-            raise Load_Test.exceptions.LoadRunnerFailedClose(
-                "Overriding Slave child processes prior to closing it, this will result in zombie processes")
-        if not isinstance(value, list):
-            raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
-        for process in value:
-            if not isinstance(process, sp.Popen):
-                raise ValueError("You cannot assign the slaves process list a value that is not a list of subprocess")
-        self._slaves = value
-
-    @property
     def children(self):
-        return self.__child_processes()
+        current_process = psutil.Process()
+        children = current_process.children(recursive=True)
+        return children
 
     @property
     def cores(self):
-        return self.__avaliable_cpu_count()
+        """
+        Takes samples of the system CPU usage to determine how many CPU's must be allocated to current system priceless
+        Returns the amount of available physical CPU's that can be used for load testing
+        :return:
+        """
+        physical_cores = psutil.cpu_count(
+            logical=False)  # Get the # of hardware cores -- HyperThreading wont make a difference
+        percentage_per_cpu = 100 / physical_cores
+        idle_time_percentage = psutil.cpu_times_percent(
+            LoadRunner.CPU_Measure_Interval).idle - LoadRunner.assumed_cpu_used
+        available_cores_cpu = 0
+        while idle_time_percentage >= percentage_per_cpu:
+            idle_time_percentage -= percentage_per_cpu
+            available_cores_cpu += 1
+
+        load_avg = math.ceil(max(os.getloadavg()[:1]) + LoadRunner.assumed_load_average_added)
+        available_cores_load_avg = physical_cores - load_avg if physical_cores > load_avg else 0
+
+        available_cores = min(available_cores_cpu, available_cores_load_avg)
+        return int(available_cores)
 
     @property
     def default_2_cores(self):
@@ -189,7 +209,99 @@ class LoadRunner:
         else:
             return True
 
-#### Server Write Commands
+    ########################################################################################################################
+    ##########################################  API COMMANDS  ##############################################################
+    ########################################################################################################################
+
+    def stop_tests(self):
+        self._kill_test()
+
+    def is_running(self):
+        return self._is_running()
+
+    def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
+        # TODO find a way to distribute segemented test data when running
+        pass
+
+    def custom_playback_test(self, client, playback_route, quality, codecs, users=None, dvr=None, days_old=None,
+                             stat_int=2):
+        self.__raise_if_running()
+        self.stop_tests()
+        self._verify_playback_options(client, playback_route, quality, codecs, users, dvr, days_old, stat_int)
+        options = self._get_playback_options(client, playback_route, quality, codecs, stat_int, users, dvr, days_old)
+        self._run_multi_core(options, locust_file_paths.web_host, locust_file_paths.playback)
+
+    def custom_api_test(self, api_info, env, node, max_request, stat_interval=None,
+                        assume_tcp=False, bin_by_resp=False):
+        self.__raise_if_running()
+        self.stop_tests()
+        self._verify_api_params(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
+        file_prefix = "Custom API"
+        options = self._get_api_options(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
+        self._run_multi_core(options, locust_file_paths.web_host, locust_file_paths.api,
+                             stats_file_name=file_prefix, stats_folder=STATS_FOLDER,
+                             log_file_name=file_prefix, log_folder=LOGS_FOLDER,
+                             log_level="ERROR")
+
+    def custom_api_to_failure(self, api_call_weight, env, node, stat_interval=None):
+        self.__raise_if_running()
+        self.stop_tests()
+        # Here are some constants of this test
+        file_prefix = "Failure API"
+        max_reqeust = False
+        assume_tcp = False
+        bin_by_resp = True
+        self._verify_api_params(api_call_weight, env, node, max_reqeust, stat_interval, assume_tcp, bin_by_resp)
+
+    def run_automated_test_case(self, setup_name, procedure_name):
+        # TODO implement way to run benchmark test
+        self.__raise_if_running()
+        self.stop_tests()
+        # way to verify setup and procedure name
+        # way to get all information and format it into the _run_nulti_core method
+        file_prefix = "Automated"
+        self.automated_test = AutomatedTestCase(setup_name, procedure_name,
+                                                self, LoadRunner.Stat_Interval)
+        self.automated_test.run()
+
+    def start_ramp_up(self, locust_count, hatch_rate, first_start=False):
+        state = self.state
+        if state == "idle":
+            raise WebOperationNoWebTest("The web UI has not been set up yet")
+        elif state == "setup":
+            self._start_ui_load(locust_count, hatch_rate)
+        else:
+            if state == "running" and not first_start:
+                self._start_ui_load(locust_count, hatch_rate)
+            else:
+                raise TestAlreadyRunning(self.Current_Custom_Test_Msg)
+
+    def get_stats(self):
+        default_total = {'99%': 0, '80%': 0, '75%': 0, '90%': 0, '66%': 0, '50%': 0, '100%': 0, 'num requests': 0,
+                         '98%': 0}
+        dist_stats = self._get_ui_request_distribution_stats()
+        info = self._get_ui_info()
+        total = dist_stats.pop("Total", default_total)
+        for key, value in total.items():
+            info.setdefault(key, value)
+        info.setdefault("stats", dist_stats)
+        info.pop("state", None)
+        return info
+
+    def reset_stats(self):
+        if self.is_running():
+            self._reset_stats()
+        else:
+            raise WebOperationNoWebTest("The web UI has not been set up and started yet")
+
+    def __raise_if_running(self):
+        test_running = self.is_running()
+        if test_running:
+            raise TestAlreadyRunning(LoadRunner.Current_Custom_Test_Msg)
+
+    ########################################################################################################################
+    ##########################################  Server Write  ##############################################################
+    ########################################################################################################################
 
     def _start_ui_load(self, locust_count, hatch_rate):
         self._users = locust_count
@@ -197,7 +309,8 @@ class LoadRunner:
         json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
         response = self.__request_ui("post", extension="/swarm", data=json_params)
         if json.loads(response.content) != LoadRunner.Succesful_Test_Start:
-            raise Load_Test.exceptions.FailedToStartLocustUI("The /swarm locust URL was accessed but the test was not properly started")
+            raise Load_Test.exceptions.FailedToStartLocustUI(
+                "The /swarm locust URL was accessed but the test was not properly started")
         self.last_write = time.time()
 
     def _stop_ui_test(self):
@@ -205,70 +318,20 @@ class LoadRunner:
         self._hatch_rate = -1
         response = self.__request_ui("get", extension="/stop")
         if json.loads(response.content) != LoadRunner.Succesful_Test_Stop:
-            raise Load_Test.exceptions.FailedToStartLocustUI("The /stop loocust URL was accessed but the test was not properly stopped")
+            raise Load_Test.exceptions.FailedToStartLocustUI(
+                "The /stop loocust URL was accessed but the test was not properly stopped")
         self.last_write = time.time()
 
     def _reset_stats(self):
         response = self.__request_ui("get", extension="/stats/reset")
         self.last_write = time.time()
 
-#### Server Uitility Commands
+    ########################################################################################################################
+    ##########################################  Server Utility #############################################################
+    ########################################################################################################################
     def _kill_test(self):
-        try:
-            info_list, return_codes = self.__fresh_state(False)
-            self._users = -1
-            self._hatch_rate = -1
-            return info_list, return_codes
-        except:
-            raise
-
-
-    def _run_distributed(self, env_options, master_locust_file, slave_locust_file):
-        pass
-
-    #TODO: change back
-    def _run_multi_core(self, env_options, master_locust_file, slave_locust_file,
-                        stats_file_name=None, log_level=None, log_file_name=None,
-                        reset_stats=False,  stats_folder=None, log_folder=None):
-        available_cores = self.__avaliable_cpu_count()
-        if self.default_2_cores and available_cores < 2:
-            available_cores = 2
-        if available_cores <= 1:
-            raise Load_Test.exceptions.NotEnoughAvailableCores(
-                "There where only {cores} cores available for load test on this machine".format(
-                    cores=available_cores))  # TO RUN MULTICORE WE NEED MORE THAN ONE CORE
-        host = self.__get_host(env_options)
-        self.expected_slaves = available_cores - 1
-        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
-        master_options = self.__create_master_options(host, master_locust_file, stats_file_name, log_level, log_file_name)
-        slave_options = self.__create_slave_options(host, slave_locust_file, reset_stats)
-        self.master = self.__create_process(env_options.get_env(), master_options)
-        to_be_slaves = []
-        env_options.max_slave_index = self.expected_slaves -1 # len(expected_slaves) -1 = max index
-        env_options.slave_index = 0
-        for index in range(self.expected_slaves):
-            slave = self.__create_process(env_options.get_env(), slave_options)
-            to_be_slaves.append(slave)
-            env_options.slave_index += 1
-        self.slaves = to_be_slaves
-        self.last_boot = time.time()
-        time.sleep(4)
-        info_list, return_code = self._kill_test()
-        print(info_list)
-        print(return_code)
-        print(master_options)
-        print(slave_options)
-
-    def _run_single_core(self, env_options, master_locust_file,
-                         stats_file_name=None, log_level=None, log_file_name=None,
-                         stats_folder=None, log_folder=None):
-
-        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
-        host = self.__get_host(env_options)
-        undis_options = self.__create_undistributed_options(host, master_locust_file, stats_file_name, log_level,
-                                                            log_file_name)
-        self.master = self.__create_process(env_options.get_env(), undis_options)
-        self.last_boot = time.time()
+        self.process_pool.terminate()
+        self.process_pool.join()
 
     def _is_running(self):
         state = self.state
@@ -283,9 +346,10 @@ class LoadRunner:
             else:
                 return False
 
-######################################## SERVER READ COMMANDS #########################################################
+    ########################################################################################################################
+    ##########################################  Server Read   ##############################################################
+    ########################################################################################################################
     def _get_ui_info(self, **kwargs):
-        self.__post_action_wait()
         response = self.__request_ui("get", extension="/stats/requests", **kwargs)
         site_data = json.loads(response.content)
         ui_info = {}
@@ -299,23 +363,21 @@ class LoadRunner:
         except KeyError as e:
             slaves_count = 0
         ui_info.setdefault("slaves", slaves_count)
-        #for url in site_data["stats"]:
-            # name = url["name"]
-            # ui_info.setdefault(name, { "avg_content_length": url["avg_content_length"],
-            #                            "rps": url["current_rps"],
-            #                            "failures": url["num_failures"],
-            #                            "requests": url["num_requests"]
-            #                            }
-            #                    )
+        # for url in site_data["stats"]:
+        # name = url["name"]
+        # ui_info.setdefault(name, { "avg_content_length": url["avg_content_length"],
+        #                            "rps": url["current_rps"],
+        #                            "failures": url["num_failures"],
+        #                            "requests": url["num_requests"]
+        #                            }
+        #                    )
         return ui_info
 
     def _ui_state(self):
-        self.__post_action_wait()
         site_data = self._get_ui_info(headers={'Cache-Control': 'no-cache'})
         return site_data["state"]
 
     def _get_ui_request_distribution_stats(self):
-        self.__post_action_wait()
         response = self.__request_ui("get", extension="/stats/distribution/csv")
         df = self.__response_to_pandas(response)
         json_data = {}
@@ -344,7 +406,6 @@ class LoadRunner:
         return json_data
 
     def _get_ui_exception_info(self):
-        self.__post_action_wait()
         response = self.__request_ui("get", extension="/exceptions/csv")
         df = self.__response_to_pandas(response)
         return df
@@ -358,35 +419,79 @@ class LoadRunner:
         else:
             return len(the_info)
 
+    ########################################################################################################################
+    ##########################################  OPTION FUNCS  ##############################################################
+    ########################################################################################################################
 
-
-
-#########################    THESE ARE THE HELPER FUNCTIONS   ###########################################################
-
-    #These are options creation commands
+    # These are options creation commands
     def _get_api_options(self, api_info, env, node, max_req, stat_interval,
-                          assume_tcp, bin_by_resp_time, comp_idx=0, max_comp_idx=0):
-        #TODO find easy way to set size for each api list we will be grabbing
-        #1. Iterate through each api route key.
-            #if its a route then go get the max size and set the size key
-            #in the api locust setup when the locust is grabbing it's data set reset the size to the current size
+                         assume_tcp, bin_by_resp_time, comp_idx=0, max_comp_idx=0):
+        # TODO find easy way to set size for each api list we will be grabbing
+        # 1. Iterate through each api route key.
+        # if its a route then go get the max size and set the size key
+        # in the api locust setup when the locust is grabbing it's data set reset the size to the current size
         for api_route, api_version_info in api_info.items():
             if api_route.title() in self.config.api_routes:
                 route_size = self._get_pool_length(api_route.title(), env, api_version_info, env)
                 for version_info in api_version_info.values():
                     version_info[size_key] = route_size
         return APIWrap(api_info, node, env, max_req, assume_tcp, bin_by_resp_time, stat_interval,
-                                 comp_idx, 0, max_comp_idx, 0, 0)
+                       comp_idx, 0, max_comp_idx, 0, 0)
 
     def _get_playback_options(self, client, playback_route, quality, codecs, stat_interval, users, dvr, days_old,
                               comp_idx=0, max_comp_idx=0):
         overall_size = self._get_pool_length(playback_route, "DEV2", dvr, days_old, users)
         return PlaybackWrap(playback_route, quality, codecs, client, users, dvr, days_old, stat_interval,
-                                    comp_idx, 0, max_comp_idx, 0, overall_size)
+                            comp_idx, 0, max_comp_idx, 0, overall_size)
 
+    def _get_locust_options(self, host, locust_file, log_level, log_file,
+                             slave, expected_slaves=None, stats_file=None):
+        from argparse import Namespace
+        if expected_slaves:
+            master = True
+        else:
+            master = False
+        options = Namespace()
+        options.host = host
+        options.web_host = self.web_ui_host_info[0]
+        options.port = self.web_ui_host_info[1]
+        options.locustfile = locust_file
+        options.csvfilebase = stats_file or False
 
+        # Put the location the Master UI Web host is listening on
+        options.master_host = self.master_host_info[0]
+        options.master_port = self.master_host_info[1]
+        options.master_bind_host = self.master_host_info[0]
+        options.master_bind_port = self.master_host_info[1]
 
-    #THESE ARE FILEPATH FUNCTIONS
+        # MASTER SLAVE OPTIONS
+        options.expect_slaves = expected_slaves or False
+        options.master = master
+        options.slave = slave
+
+        # LOGGING/Stats OPTIONS
+        options.loglevel = log_level or "DEBUG"
+        options.logfile = log_file or False
+
+        # MISC OPTIONS
+        options.list_commands = False
+        options.show_task_ratio = False
+        options.show_task_ratio_json = False
+        options.show_version = False
+        options.reset_stats = False
+        options.print_stats = False
+        options.only_summary = False
+        options.run_time = False
+        options.no_web = False
+        options.hatch_rate = False
+        options.num_clients = False
+        return options
+
+    ########################################################################################################################
+    ##########################################  FILEPATH FUNCS  ############################################################
+    ########################################################################################################################
+
+    # THESE ARE FILEPATH FUNCTIONS
     def __get_file_paths(self, stats_folder, stats_file_name, log_folder, log_file_name):
         if stats_folder is not None and stats_file_name is not None:
             stats_file_name = self.__get_file_path(stats_folder, stats_file_name)
@@ -411,190 +516,79 @@ class LoadRunner:
         todays_file = os.path.join(folder_path, "{today}_{name}".format(today=today, name=file_name))
         return todays_file
 
-    #THESE ARE PROCESS STATE COMMANDS
-    def __fresh_state(self, wait):
-        """
-        Helper method for _kill_test, use only if _kill_test doesn't suit your needs
-        :param wait: How long to wait before killing the site
-        :return: return_info (raw string), return codes [int]
-        """
-        return_info = []
-        return_codes = []
-        if wait:
-            info, code = self.__safe_wait_kill(self.master)
-        else:
-            info, code = self.__safe_kill(self.master)
-        return_codes.append(code)
-        return_info.append(info)
-        for slave in self.slaves:
-            if wait:
-                info, code = self.__safe_wait_kill(slave)
-            else:
-                info, code = self.__safe_kill(slave)
-            return_codes.append(code)
-            return_info.append(info)
-        self.master = None
-        self.slaves = []
+    ########################################################################################################################
+    ##########################################  Process Create  #############################################################
+    ########################################################################################################################
+
+    def _run_distributed(self, env_options, master_locust_file, slave_locust_file):
+        pass
+
+    # TODO: change back
+    def _run_multi_core(self, env_options, master_locust_file, slave_locust_file,
+                        stats_file_name=None, log_level=None, log_file_name=None,
+                        reset_stats=False, stats_folder=None, log_folder=None):
+        self._kill_test()
+        # check current core loads to determine possible usage
+        available_cores = self.cores
+        if self.default_2_cores and available_cores < 2:
+            available_cores = 2
+        if available_cores <= 1:
+            raise Load_Test.exceptions.NotEnoughAvailableCores(
+                "There where only {cores} cores available for load test on this machine".format(
+                    cores=available_cores))  # TO RUN MULTICORE WE NEED MORE THAN ONE CORE\
+        # get all needed variables for slave/master options
+        host = self.__get_host(env_options)
+        self.expected_slaves = available_cores - 1
+        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
+
+        master_options = self._get_locust_options(host, master_locust_file, log_level, log_file_name, False,
+                                                  self.expected_slaves, stats_file_name)
+        slave_options = self._get_locust_options(host, slave_locust_file, log_level, log_file_name, True, None, stats_file_name)
+        # configure all environment variables the locust may need
+        env_options.max_slave_index = self.expected_slaves - 1
+        env_options.stamp_env()
+        locust_options = []
+        # create the slave/master options
+        locust_options.append((master_options, 0))
+        for index in range(self.expected_slaves):
+            locust_options.append((slave_options, index))
+        # start the needed locust processes in multiprocessing pool and wait for web UI to load
+        self._renew_pool(self.expected_slaves + 1)
+        self.process_pool.map_async(run_locust, locust_options)
+        self.__wait_till_loaded()
+
+
+    def _run_single_core(self, env_options, locust_file, stats_file_name=None, log_level=None, log_file_name=None,
+                         stats_folder=None, log_folder=None):
+        self._kill_test()
+        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
+        host = self.__get_host(env_options)
+        local_options = self._get_locust_options(host, locust_file, log_level, log_file_name, False, None, stats_file_name)
         self.expected_slaves = 0
-        if self.children:
-            raise Load_Test.exceptions.LoadRunnerFailedClose("unsuccessfully closed all child processes")
-        std_out_list = [clean_stdout(info_[0]) if info_[0] else "" for info_ in return_info]
-        std_error_list = [clean_stdout(info_[1]) if info_[1] else "" for info_ in return_info]
-        class ProcessInfo:
-            def __init__(self, std_out, std_err):
-                self._std_out = std_out
-                self._std_err = std_err
-
-            def __str__(self):
-                return "\n_________________ERROR_______________\n" + self._std_err +\
-                       "\n_________________OUT__________________\n" + self._std_out
-
-            def __repr__(self):
-                return str(self)
-
-        return_info = [ProcessInfo(std_out_list[index], std_error_list[index]) for index in range(len(std_error_list))]
-        return return_info, return_codes
-
-    def __safe_wait_kill(self, process):
-        if process is None:
-            return "Process was None", -15
-        try:
-            return_code = process.wait(timeout=LoadRunner.Max_Process_Wait_Time)
-            info = self.master.communicate()
-        except sp.TimeoutExpired as e:
-            info, return_code = self.__safe_kill(process)
-        return info, return_code
-
-    def __safe_kill(self, process):
-        if process is None:
-            return "Process was None", -15
-        try:
-            while process.poll() is None:
-                process.kill()
-            return_code = 0 if process.poll() == -9 else process.poll()
-            info = process.communicate()
-            return info, return_code
-        except OSError as e:
-            if e.strerror == "No such process":
-                return str(e), -10
-            else:
-                raise e
-
-    def __child_processes(self):
-        current_process = psutil.Process()
-        children = current_process.children(recursive=True)
-        return children
-
-    #THESE ARE PROCESS CREATION METHODS
-    def __create_process(self, os_env, options):
-        p = sp.Popen(options, env=os_env, stdout=sp.PIPE, stderr=sp.STDOUT, stdin=sp.PIPE, shell=True)
-        return p
-
-    def __create_master_options(self, host, master_locust_file, csv_file=None, log_level=None, log_file=None):
-
-        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) (maybe, currently port forwarded
-        web_ui_host = self.web_ui_host_info[0]
-        web_ui_port = self.web_ui_host_info[1]
-        masterbindHost = self.master_host_info[0]
-        masterbindPort = self.master_host_info[1]
-        locust_path = "locust"#self.__get_locust_file_dir()
-
-        master_arg_string = "{locust} -f {master_file} -H {l_host} --master --master-bind-host={mb_host} --master-bind-port={mb_port}".format(
-            locust=locust_path, master_file=master_locust_file, l_host=host, mb_host=masterbindHost, mb_port=masterbindPort
-        )
-        if csv_file is not None:
-            master_arg_string = "{master_arg_string} --csv={file_name}".format(master_arg_string=master_arg_string,
-                                                                               file_name=csv_file)
-        if log_file is not None:
-            master_arg_string = "{master_arg_string} --logfile={file_name}".format(master_arg_string=master_arg_string,
-                                                                                   file_name=log_file)
-        if log_level is not None:
-            master_arg_string = "{master_arg_string} --loglevel={loglevel}".format(master_arg_string=master_arg_string,
-                                                                                   loglevel=log_level)
+        env_options.stamp_env()
+        self._renew_pool(1)
+        self.process_pool.apply_async(run_locust, [(local_options, 0)])
+        self.__wait_till_loaded()
 
 
-        return shlex.split(master_arg_string)
+    def _renew_pool(self, process_count):
+        def change_env():
+            os.environ = os.environ.copy()
+        self.process_pool = Pool(processes=process_count, initializer=change_env)
 
-    def __create_slave_options(self, host, slave_locust_file, reset_stats=False):
-        masterhost = self.master_host_info[0]
-        masterport = self.master_host_info[1]
-        locust_path = "locust"#self.__get_locust_file_dir()
 
-        slave_arg_string = "{locust} -f {slave_file} -H {l_host} --slave --master-host={m_host} --master-port={m_port}".format(
-            locust = locust_path, slave_file=slave_locust_file, l_host=host, m_host=masterhost, m_port=masterport
-        )
-        if reset_stats:
-            slave_arg_string = "{slave_arg_string} --reset-stats".format(slave_arg_string=slave_arg_string)
+    ########################################################################################################################
+    ##########################################  MISC HELPERS  ##############################################################
+    ########################################################################################################################
 
-        return shlex.split(slave_arg_string)
-
-    def __create_undistributed_options(self, host, locust_file, csv_file=None, log_level=None, log_file=None):
-
-        # TODO: Use the web_ui_host stuff eventually (when incorporating with DCMNGR) maybe, currently port forwarding
-        locust_path = "locust"#self.__get_locust_file_dir()
-
-        undis_arg_string = "{locust} -f {undis_file} -H {l_host} ".format(
-           locust=locust_path, undis_file=locust_file, l_host=host,
-        )
-        if csv_file is not None:
-            undis_arg_string = "{undis_arg_string} --csv={file_name}".format(undis_arg_string=undis_arg_string,
-                                                                             file_name=csv_file)
-        if log_file is not None:
-            undis_arg_string = "{undis_arg_string} --logfile={file_name}".format(undis_arg_string=undis_arg_string,
-                                                                                 file_name=log_file)
-        if log_level is not None:
-            undis_arg_string = "{undis_arg_string} --loglevel={loglevel}".format(undis_arg_string=undis_arg_string,
-                                                                                 loglevel=log_level)
-        return shlex.split(undis_arg_string)
-
-    #THESE ARE MISC HELPER FUNCTIONS
     def _users_property_function_wrapper(self):
         return self.users
 
-    def __assert_slave_count(self):
-        site_data = self._get_ui_info()
-        slaves_count = site_data["slaves"]
-        if self.expected_slaves is not slaves_count:
-            raise Load_Test.exceptions.SlaveInitilizationException("All of the slaves where not loaded correctly")
-
-    def __avaliable_cpu_count(self):
-        """
-        Takes samples of the system CPU usage to determine how many CPU's must be allocated to current system priceless
-        Returns the amount of available physical CPU's that can be used for load testing
-        :return:
-        """
-        physical_cores = psutil.cpu_count(
-            logical=False)  # Get the # of hardware cores -- HyperThreading wont make a difference
-        percentage_per_cpu = 100 / physical_cores
-        idle_time_percentage = psutil.cpu_times_percent(
-            LoadRunner.CPU_Measure_Interval).idle - LoadRunner.assumed_cpu_used
-        available_cores_cpu = 0
-        while idle_time_percentage >= percentage_per_cpu:
-            idle_time_percentage -= percentage_per_cpu
-            available_cores_cpu += 1
-
-        load_avg = math.ceil(max(os.getloadavg()[:1]) + LoadRunner.assumed_load_average_added)
-        available_cores_load_avg = physical_cores - load_avg if physical_cores > load_avg else 0
-
-        available_cores = min(available_cores_cpu, available_cores_load_avg)
-        return int(available_cores)
 
     def __response_to_pandas(self, response):
         io_string = StringIO(response.content)
         df = pd.read_csv(io_string, sep=",")
         return df
-
-    def __set_virtual_env(self):
-        activate_virtual_env_path = "bin/activate_this.py"
-        if os.path.isdir(LOCALVENV_DIR):
-
-            path = os.path.join(LOCALVENV_DIR, activate_virtual_env_path)
-            execfile(path, dict(__file__=path))
-        elif os.path.isdir(VENV_DIR):
-            path = os.path.join(VENV_DIR, activate_virtual_env_path)
-            execfile(path, dict(__file__=path))
-        else:
-            raise Exception("Could not find virutal env")
 
     def __get_host(self, options):
         if isinstance(options, APIWrap):
@@ -608,11 +602,10 @@ class LoadRunner:
                           ConnectionError,
                           max_time=Max_Connection_Time)
     def __request_ui(self, request, extension=None, **kwargs):
-        self.__post_boot_wait()
+        self.__post_action_wait()
         web_ui_host = self.web_ui_host_info[0]
         web_ui_port = self.web_ui_host_info[1]
         if web_ui_host in ["localhost", "127.0.0.1", "0.0.0.0"]:
-            os.environ['no_proxy'] = '127.0.0.1,localhost'
             host = "http://{web_ui_host}:{web_ui_port}".format(web_ui_host=web_ui_host, web_ui_port=web_ui_port)
             host = host + extension if extension is not None else host
         else:
@@ -620,38 +613,43 @@ class LoadRunner:
             host = host + extension if extension is not None else host
         response = requests.request(request, host, **kwargs)
         if response.status_code is not 200:
-            raise Load_Test.exceptions.LocustUIUnaccessible("The web UI route {extension} could not be accessed".format(extension=extension))
+            raise Load_Test.exceptions.LocustUIUnaccessible(
+                "The web UI route {extension} could not be accessed".format(extension=extension))
         return response
 
+    ########################################################################################################################
+    ##########################################  VERIFY FUNCS  ##############################################################
+    ########################################################################################################################
 
-######################################### VERIFICATION METHODS #########################################################
+    def _verify_playback_options(self, client, playback_route, quality, codecs, users, dvr, days_old,
+                                 stat_int):  # check dist loc info
 
-    def _verify_playback_options(self, client, playback_route, quality, codecs, users, dvr, days_old, stat_int):     #check dist loc info
-
-        #check playback route
+        # check playback route
         if playback_route not in self.config.playback_routes:
             raise InvalidPlaybackRoute("{rte} Invalid Playback Route - Valid: {vld}".format(rte=playback_route,
-                                                                                            vld=str(self.config.playback_routes)))
-        #check playback client
+                                                                                            vld=str(
+                                                                                                self.config.playback_routes)))
+        # check playback client
         if client not in self.config.playback_players:
             raise InvalidPlaybackPlayer("{clt} Invalid Playback Player - Valid: {vld}".format(clt=client,
-                                                                                              vld=str(self.config.playback_players)))
-        #check plaback codec
+                                                                                              vld=str(
+                                                                                                  self.config.playback_players)))
+        # check plaback codec
         if not isinstance(codecs, list):
             if codecs and not isinstance(codecs[0], str):
                 raise InvalidCodec("Invalid Playback Codec, codecs must be entered as list of strings")
-        #check quality
+        # check quality
         self.__verify_int("{} option".format(PlaybackWrap.QUALITY_KEY), quality)
-        #check the stat_int
+        # check the stat_int
         self.__verify_int("{} option".format(PlaybackWrap.STAT_INT_KEY), stat_int)
-        #Top N Playback is different than other routes
+        # Top N Playback is different than other routes
         if not playback_route == "Top N Playback":
             self.__verify_int("{} option".format(PlaybackWrap.USERS_KEY), users)
             self.__verify_int("{} option".format(PlaybackWrap.DVR_KEY), dvr)
             self.__verify_int("{} option".format(PlaybackWrap.DAYS_KEY), days_old)
 
     def _verify_api_params(self, api_call_weight, env, node, max_request, stat_interval, assume_tcp, bin_by_resp):
-        #check dis locust
+        # check dis locust
         self.__verify_api_call_weight(api_call_weight)
         self.__verify_env(env)
         self.__verify_node(env, node)
@@ -663,23 +661,23 @@ class LoadRunner:
 
     def __verify_api_call_weight(self, api_call_weight):
         given_routes = api_call_weight.keys()
-        #validate the route is an actual route
+        # validate the route is an actual route
         for given_route in given_routes:
             if not self.config.is_route(given_route):
                 raise InvalidRoute("{inv_route} is not a valid route".format(inv_route=given_route))
             route_params = api_call_weight[given_route]
-            #validate the version is an actual version of the route
+            # validate the version is an actual version of the route
             for route_version in route_params.keys():
                 if not self.config.is_version(given_route, int(route_version)):
                     raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
                         version=route_version, route=given_route
                     ))
-                #verify the route contains all neccesary instance variables
+                # verify the route contains all neccesary instance variables
                 for neccesary_key in API_VERSION_KEYS:
                     if neccesary_key not in route_params[route_version].keys():
                         raise InvalidAPIVersionParams("{key} not in api_call {call} version {version}"
-                                                    .format(key=neccesary_key, call=given_route, version=route_version))
-
+                                                      .format(key=neccesary_key, call=given_route,
+                                                              version=route_version))
 
     def __verify_env(self, env):
         if not self.config.is_api_env(env):
@@ -701,7 +699,21 @@ class LoadRunner:
             error = "{name} should be an int".format(name=name)
             raise OptionTypeError(error)
 
-#################################################  WAIT METHODS  ########################################################
+    ########################################################################################################################
+    ##########################################  Server WAITS  ##############################################################
+    ########################################################################################################################
+
+    def __wait_till_loaded(self):
+        retries = 0
+        while True:
+            try:
+                self.__request_ui('get')
+                break
+            except ConnectionError:
+                time.sleep(1)
+                retries+= 1
+            if retries > 3:
+                raise ConnectionError("LOCUST UI WAS NOT ABLE TO OPEN")
 
     def __post_action_wait(self):
         s_since = time.time() - self.last_write
@@ -709,8 +721,3 @@ class LoadRunner:
             to_sleep = LoadRunner.UI_Action_Delay - s_since
             time.sleep(to_sleep)
 
-    def __post_boot_wait(self):
-        s_since = time.time() - self.last_boot
-        if s_since <= LoadRunner.Boot_Time_Delay:
-            to_sleep = LoadRunner.Boot_Time_Delay - s_since
-            time.sleep(to_sleep)
