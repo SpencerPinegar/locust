@@ -1,4 +1,3 @@
-import json
 import os
 import sys
 
@@ -8,27 +7,24 @@ else:
     from io import StringIO
 
 import Load_Test.exceptions
-import pandas as pd
+
 import psutil
-import shlex
-import subprocess32 as sp
 import logging
 import math
 import datetime
 import time
 from collections import namedtuple
 from multiprocessing import Pool
-import requests
 from requests.exceptions import ConnectionError
-import backoff
 from Load_Test.exceptions import (SlaveInitilizationException, InvalidRoute, InvalidAPIEnv, InvalidPlaybackPlayer,
                                   InvalidPlaybackRoute, InvalidAPIVersion, InvalidAPINode, InvalidAPIVersionParams,
-                                  InvalidCodec, OptionTypeError, WebOperationNoWebTest, TestAlreadyRunning)
+                                  InvalidCodec, OptionTypeError, TestAlreadyRunning)
 from Load_Test.Misc.environment_wrapper import (PlaybackEnvironmentWrapper as PlaybackWrap,
                                                 APIEnvironmentWrapper as APIWrap, )
-from Load_Test.Misc.utils import clean_stdout, size_key, API_VERSION_KEYS
+from Load_Test.Misc.utils import size_key, API_VERSION_KEYS
 from Load_Test.Data.request_pool import RequestPoolFactory
 from Load_Test.automated_test_case import AutomatedTestCase
+from Load_Test.locust_ui_client import LocustUIClient
 from Locust_Files import run_locust
 
 logging.basicConfig(level=logging.DEBUG,
@@ -121,29 +117,17 @@ class LoadRunner:
         self._last_boot_time = time.time()
         self._users = -1
         self._hatch_rate = -1
+        self.web_client = LocustUIClient(self.web_ui_host_info[0], self.web_ui_host_info[1])
 
     @property
     def users(self):
-        if not self.children:
-            return -1
-        else:
-            return self._get_ui_info()["user_count"]
+        value = self.web_client.users
+        return value
 
     @property
     def state(self):
-        if not self.children:
-            return "idle"
-        else:
-            try:
-                state = self._ui_state()
-            except ConnectionError:
-                return "idle"
-            else:
-                if state in ["running", "hatching"]:
-                    return "running"
-                elif state in ["ready", "stopped"]:
-                    return "setup"
-
+        value = self.web_client.state
+        return value
 
     @property
     def last_write(self):
@@ -156,8 +140,7 @@ class LoadRunner:
     @property
     def slaves_loaded(self):
         try:
-            site_data = self._get_ui_info()
-            slaves_count = site_data["slaves"]
+            slaves_count = self.web_client.slave_count
             if self.expected_slaves is not slaves_count:
                 raise SlaveInitilizationException("All of the slaves where not loaded correctly")
             else:
@@ -217,7 +200,17 @@ class LoadRunner:
         self._kill_test()
 
     def is_running(self):
-        return self._is_running()
+        state = self.state
+        if state == "idle":
+            return False
+        elif state == "running":
+            return True
+        else:
+            state = self.state
+            if state == "running":
+                return True
+            else:
+                return False
 
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
         # TODO find a way to distribute segemented test data when running
@@ -265,150 +258,38 @@ class LoadRunner:
         self.automated_test.run()
 
     def start_ramp_up(self, locust_count, hatch_rate, first_start=False):
-        state = self.state
-        if state == "idle":
-            raise WebOperationNoWebTest("The web UI has not been set up yet")
-        elif state == "setup":
-            self._start_ui_load(locust_count, hatch_rate)
-        else:
-            if state == "running" and not first_start:
-                self._start_ui_load(locust_count, hatch_rate)
-            else:
-                raise TestAlreadyRunning(self.Current_Custom_Test_Msg)
+        return self.web_client.start_ramp_up(locust_count, hatch_rate, first_start)
+
 
     def get_stats(self):
-        default_total = {'99%': 0, '80%': 0, '75%': 0, '90%': 0, '66%': 0, '50%': 0, '100%': 0, 'num requests': 0,
-                         '98%': 0}
-        dist_stats = self._get_ui_request_distribution_stats()
-        info = self._get_ui_info()
-        total = dist_stats.pop("Total", default_total)
-        for key, value in total.items():
-            info.setdefault(key, value)
-        info.setdefault("stats", dist_stats)
-        info.pop("state", None)
-        return info
+        return self.web_client.stats
 
     def reset_stats(self):
-        if self.is_running():
-            self._reset_stats()
-        else:
-            raise WebOperationNoWebTest("The web UI has not been set up and started yet")
+        return self.web_client.reset_stats()
+
+
+    def stop_ui_test(self):
+        self.web_client.stop_test()
+
+
+
+
+
+    ########################################################################################################################
+    ##########################################  Server Utility #############################################################
+    ########################################################################################################################
 
     def __raise_if_running(self):
         test_running = self.is_running()
         if test_running:
             raise TestAlreadyRunning(LoadRunner.Current_Custom_Test_Msg)
 
-    ########################################################################################################################
-    ##########################################  Server Write  ##############################################################
-    ########################################################################################################################
-
-    def _start_ui_load(self, locust_count, hatch_rate):
-        self._users = locust_count
-        self._hatch_rate = hatch_rate
-        json_params = {"locust_count": locust_count, "hatch_rate": hatch_rate}
-        response = self.__request_ui("post", extension="/swarm", data=json_params)
-        if json.loads(response.content) != LoadRunner.Succesful_Test_Start:
-            raise Load_Test.exceptions.FailedToStartLocustUI(
-                "The /swarm locust URL was accessed but the test was not properly started")
-        self.last_write = time.time()
-
-    def _stop_ui_test(self):
-        self._users = -1
-        self._hatch_rate = -1
-        response = self.__request_ui("get", extension="/stop")
-        if json.loads(response.content) != LoadRunner.Succesful_Test_Stop:
-            raise Load_Test.exceptions.FailedToStartLocustUI(
-                "The /stop loocust URL was accessed but the test was not properly stopped")
-        self.last_write = time.time()
-
-    def _reset_stats(self):
-        response = self.__request_ui("get", extension="/stats/reset")
-        self.last_write = time.time()
-
-    ########################################################################################################################
-    ##########################################  Server Utility #############################################################
-    ########################################################################################################################
     def _kill_test(self):
         self.process_pool.terminate()
         self.process_pool.join()
 
-    def _is_running(self):
-        state = self.state
-        if state == "idle":
-            return False
-        elif state == "running":
-            return True
-        else:
-            state = self.state
-            if state == "running":
-                return True
-            else:
-                return False
 
-    ########################################################################################################################
-    ##########################################  Server Read   ##############################################################
-    ########################################################################################################################
-    def _get_ui_info(self, **kwargs):
-        response = self.__request_ui("get", extension="/stats/requests", **kwargs)
-        site_data = json.loads(response.content)
-        ui_info = {}
-        ui_info.setdefault("errors", site_data["errors"])
-        ui_info.setdefault("fail_ratio", site_data["fail_ratio"])
-        ui_info.setdefault("user_count", site_data["user_count"])
-        ui_info.setdefault("state", site_data["state"])
 
-        try:
-            slaves_count = len(site_data["slaves"])
-        except KeyError as e:
-            slaves_count = 0
-        ui_info.setdefault("slaves", slaves_count)
-        # for url in site_data["stats"]:
-        # name = url["name"]
-        # ui_info.setdefault(name, { "avg_content_length": url["avg_content_length"],
-        #                            "rps": url["current_rps"],
-        #                            "failures": url["num_failures"],
-        #                            "requests": url["num_requests"]
-        #                            }
-        #                    )
-        return ui_info
-
-    def _ui_state(self):
-        site_data = self._get_ui_info(headers={'Cache-Control': 'no-cache'})
-        return site_data["state"]
-
-    def _get_ui_request_distribution_stats(self):
-        response = self.__request_ui("get", extension="/stats/distribution/csv")
-        df = self.__response_to_pandas(response)
-        json_data = {}
-        for index, row in df.iterrows():
-            name = row["Name"]
-            name = name.replace("POST ", "").replace("GET ", "")
-            num_requests = row["# requests"]
-            p_50 = row["50%"]
-            p_66 = row["66%"]
-            p_75 = row["75%"]
-            p_80 = row["80%"]
-            p_90 = row["90%"]
-            p_98 = row["98%"]
-            p_99 = row["99%"]
-            p_100 = row["100%"]
-            json_data.setdefault(name, {"num requests": num_requests,
-                                        "50%": p_50,
-                                        "66%": p_66,
-                                        "75%": p_75,
-                                        "80%": p_80,
-                                        "90%": p_90,
-                                        "98%": p_98,
-                                        "99%": p_99,
-                                        "100%": p_100
-                                        })
-        return json_data
-
-    def _get_ui_exception_info(self):
-        response = self.__request_ui("get", extension="/exceptions/csv")
-        df = self.__response_to_pandas(response)
-        return df
 
     def _get_pool_length(self, route, env, *args):
         pool_factory = RequestPoolFactory(self.config, 0, 0, 0, 0, None, [env])
@@ -585,11 +466,6 @@ class LoadRunner:
         return self.users
 
 
-    def __response_to_pandas(self, response):
-        io_string = StringIO(response.content)
-        df = pd.read_csv(io_string, sep=",")
-        return df
-
     def __get_host(self, options):
         if isinstance(options, APIWrap):
             host = self.config.get_api_host(options.env, options.node)
@@ -597,25 +473,6 @@ class LoadRunner:
         elif isinstance(options, PlaybackWrap):
             host = self.config.get_api_host("DEV2", 0)
             return host
-
-    @backoff.on_exception(backoff.expo,
-                          ConnectionError,
-                          max_time=Max_Connection_Time)
-    def __request_ui(self, request, extension=None, **kwargs):
-        self.__post_action_wait()
-        web_ui_host = self.web_ui_host_info[0]
-        web_ui_port = self.web_ui_host_info[1]
-        if web_ui_host in ["localhost", "127.0.0.1", "0.0.0.0"]:
-            host = "http://{web_ui_host}:{web_ui_port}".format(web_ui_host=web_ui_host, web_ui_port=web_ui_port)
-            host = host + extension if extension is not None else host
-        else:
-            host = "https://{web_ui_host}".format(web_ui_host=web_ui_host)
-            host = host + extension if extension is not None else host
-        response = requests.request(request, host, **kwargs)
-        if response.status_code is not 200:
-            raise Load_Test.exceptions.LocustUIUnaccessible(
-                "The web UI route {extension} could not be accessed".format(extension=extension))
-        return response
 
     ########################################################################################################################
     ##########################################  VERIFY FUNCS  ##############################################################
@@ -706,14 +563,15 @@ class LoadRunner:
     def __wait_till_loaded(self):
         retries = 0
         while True:
-            try:
-                self.__request_ui('get')
+            our_state = self.state
+            if our_state != "setup":
+                if retries < 3:
+                    retries =+ 1
+                else:
+                    raise ConnectionError("LOCUST UI WAS NOT ABLE TO OPEN")
+            else:
                 break
-            except ConnectionError:
-                time.sleep(1)
-                retries+= 1
-            if retries > 3:
-                raise ConnectionError("LOCUST UI WAS NOT ABLE TO OPEN")
+
 
     def __post_action_wait(self):
         s_since = time.time() - self.last_write

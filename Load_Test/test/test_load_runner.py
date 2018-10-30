@@ -198,7 +198,7 @@ class TestLoadRunnerUnderTheHood(LocustTest):
     def test_reset_stats(self):
         self._basic_setup()
         stats_file_before_reset = self.load_runner._get_ui_request_distribution_stats()
-        self.load_runner._reset_stats()
+        self.load_runner.reset_stats()
         stats_file_after_reset = self.load_runner._get_ui_request_distribution_stats()
         pre_stats = stats_file_before_reset["Total"]["num requests"]
         post_stats = stats_file_after_reset["Total"]["num requests"]
@@ -207,7 +207,7 @@ class TestLoadRunnerUnderTheHood(LocustTest):
 
     def test_stop_ui_test(self):
         self._basic_setup()
-        self.load_runner._stop_ui_test()
+        self.load_runner.stop_ui_test()
         time.sleep(1)
         state = self.load_runner.state
         self.assertEqual("setup", state, "The Locust UI was not stopped correctly")
