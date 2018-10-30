@@ -20,6 +20,20 @@ def shutdown(host):
 
 
 
+def __set_virtual_env(self):
+
+    API_LOAD_TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+
+    PROJECT_DIR = os.path.dirname(API_LOAD_TEST_DIR)
+    LOCALVENV_DIR = os.path.join(PROJECT_DIR, "localVenv/")
+    VENV_DIR = os.path.join(PROJECT_DIR, "venv/")
+    activate_virtual_env_path = "bin/activate_this.py"
+    if os.path.isdir(LOCALVENV_DIR):
+
+        path = os.path.join(LOCALVENV_DIR, activate_virtual_env_path)
+
+
+
 def main_func(two_cores, host):
     os.environ.setdefault('OBJC_DISABLE_INITIALIZE_FORK_SAFETY', 'YES')
     os.environ['no_proxy'] = '127.0.0.1,localhost,0.0.0.0'
