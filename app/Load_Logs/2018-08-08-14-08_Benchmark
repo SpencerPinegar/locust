@@ -1,0 +1,23 @@
+[2018-08-08 14:50:10,262] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-08 14:50:10,265] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-08T20:50:10Z
+[2018-08-08 14:50:10,265] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-08 14:50:10,265] Spencers-MacBook-Pro.local/ERROR/stderr: Traceback (most recent call last):
+[2018-08-08 14:50:10,265] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Load_Test/venv/bin/locust", line 11, in <module>
+[2018-08-08 14:50:10,266] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-08 14:50:10,266] Spencers-MacBook-Pro.local/ERROR/stderr: load_entry_point('locustio==0.9.0.dev0', 'console_scripts', 'locust')()
+[2018-08-08 14:50:10,267] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Load_Test/venv/lib/python2.7/site-packages/locust/main.py", line 468, in main
+[2018-08-08 14:50:10,268] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-08 14:50:10,268] Spencers-MacBook-Pro.local/ERROR/stderr: time.sleep(1)
+[2018-08-08 14:50:10,268] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Load_Test/venv/lib/python2.7/site-packages/gevent/hub.py", line 159, in sleep
+[2018-08-08 14:50:10,268] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-08 14:50:10,268] Spencers-MacBook-Pro.local/ERROR/stderr: hub.wait(t)
+[2018-08-08 14:50:10,268] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/_hub_primitives.py", line 46, in gevent.__hub_primitives.WaitOperationsGreenlet.wait
+[2018-08-08 14:50:10,272] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/_hub_primitives.py", line 55, in gevent.__hub_primitives.WaitOperationsGreenlet.wait
+[2018-08-08 14:50:10,272] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/_waiter.py", line 151, in gevent.__waiter.Waiter.get
+[2018-08-08 14:50:10,273] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/_greenlet_primitives.py", line 59, in gevent.__greenlet_primitives.SwitchOutGreenletWithLoop.switch
+[2018-08-08 14:50:10,273] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/_greenlet_primitives.py", line 59, in gevent.__greenlet_primitives.SwitchOutGreenletWithLoop.switch
+[2018-08-08 14:50:10,273] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/_greenlet_primitives.py", line 63, in gevent.__greenlet_primitives.SwitchOutGreenletWithLoop.switch
+[2018-08-08 14:50:10,273] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/__greenlet_primitives.pxd", line 35, in gevent.__greenlet_primitives._greenlet_switch
+[2018-08-08 14:50:10,274] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-08 14:50:10,274] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-08 14:50:10,274] Spencers-MacBook-Pro.local/ERROR/stderr: 

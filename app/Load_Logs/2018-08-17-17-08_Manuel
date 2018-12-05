@@ -1,0 +1,48 @@
+[2018-08-17 17:05:50,154] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-17 17:05:50,155] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-17T23:05:50Z
+[2018-08-17 17:05:50,155] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: Traceback (most recent call last):
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/bin/locust", line 11, in <module>
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: load_entry_point('locustio==0.9.0.dev0', 'console_scripts', 'locust')()
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/main.py", line 463, in main
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: runners.locust_runner = MasterLocustRunner(locust_classes, options)
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/runners.py", line 248, in __init__
+[2018-08-17 17:08:24,277] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: self.server = rpc.Server(self.master_bind_host, self.master_bind_port)
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/rpc/zmqrpc.py", line 20, in __init__
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: self.receiver.bind("tcp://%s:%i" % (host, port))
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: File "zmq/backend/cython/socket.pyx", line 549, in zmq.backend.cython.socket.Socket.bind
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: File "zmq/backend/cython/checkrc.pxd", line 25, in zmq.backend.cython.checkrc._check_rc
+[2018-08-17 17:08:24,278] Spencers-MacBook-Pro.local/ERROR/stderr: zmq.error
+[2018-08-17 17:08:24,279] Spencers-MacBook-Pro.local/ERROR/stderr: .
+[2018-08-17 17:08:24,279] Spencers-MacBook-Pro.local/ERROR/stderr: ZMQError
+[2018-08-17 17:08:24,279] Spencers-MacBook-Pro.local/ERROR/stderr: :
+[2018-08-17 17:08:24,279] Spencers-MacBook-Pro.local/ERROR/stderr: Address already in use
+[2018-08-17 17:08:24,279] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:34,336] Spencers-MacBook-Pro.local/ERROR/stderr: Traceback (most recent call last):
+[2018-08-17 17:08:34,336] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/bin/locust", line 11, in <module>
+[2018-08-17 17:08:34,336] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:34,336] Spencers-MacBook-Pro.local/ERROR/stderr: load_entry_point('locustio==0.9.0.dev0', 'console_scripts', 'locust')()
+[2018-08-17 17:08:34,336] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/main.py", line 463, in main
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: runners.locust_runner = MasterLocustRunner(locust_classes, options)
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/runners.py", line 248, in __init__
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: self.server = rpc.Server(self.master_bind_host, self.master_bind_port)
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/rpc/zmqrpc.py", line 20, in __init__
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: self.receiver.bind("tcp://%s:%i" % (host, port))
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: File "zmq/backend/cython/socket.pyx", line 549, in zmq.backend.cython.socket.Socket.bind
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: File "zmq/backend/cython/checkrc.pxd", line 25, in zmq.backend.cython.checkrc._check_rc
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: zmq.error
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: .
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: ZMQError
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: :
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: Address already in use
+[2018-08-17 17:08:34,337] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 17:09:29,108] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-17 17:09:29,108] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-17T23:09:29Z
+[2018-08-17 17:09:29,108] Spencers-MacBook-Pro.local/ERROR/stderr: 

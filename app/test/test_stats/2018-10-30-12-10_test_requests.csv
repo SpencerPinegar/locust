@@ -1,0 +1,17 @@
+"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
+"GET","Balding Solutions 13440487",1,0,320,319,319,319,4044,0.07
+"GET","Comedy Central Programming 13465298",12,0,290,274,113,365,261261,0.85
+"GET","Comedy Central Programming 13465331",16,0,240,262,116,442,439950,1.14
+"GET","Comedy Central Programming 13466148",22,0,210,240,61,547,342090,1.57
+"GET","Comedy Central Programming 13466153",24,0,200,256,101,726,495568,1.71
+"GET","Love & Hip Hop Hollywood 13468196",38,0,200,216,58,552,538854,2.70
+"GET","Love & Hip Hop Hollywood 13468209",41,0,150,198,50,516,528185,2.92
+"GET","Love & Hip Hop Hollywood 13468220",44,0,140,161,43,466,539847,3.13
+"GET","Nick Cannon Presents: Wild 'N Out 13468211",43,0,130,164,56,525,516157,3.06
+"GET","Nick Cannon Presents: Wild 'N Out 13468221",46,0,150,160,43,468,618519,3.27
+"GET","Perricone MD Cold Plasma Sub-D 13461406",5,0,260,448,196,1196,14505,0.36
+"GET","T.I. & Tiny: Friends and Family Hustle 13468170",30,0,220,245,56,657,547040,2.14
+"GET","T.I. & Tiny: Friends and Family Hustle 13468199",40,0,200,231,41,518,536621,2.85
+"GET","T.I. & Tiny: Friends and Family Hustle 13468225",46,0,98,143,41,550,547430,3.27
+"GET","The NEW BISSELL CrossWave Pet 13440507",5,0,230,251,175,397,14295,0.36
+"None","Total",413,0,180,203,41,1196,506857,29.40

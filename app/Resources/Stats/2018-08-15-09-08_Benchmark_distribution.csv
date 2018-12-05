@@ -1,0 +1,7 @@
+"Name","# requests","50%","66%","75%","80%","90%","95%","98%","99%","100%"
+"POST 0 PASS < 250.0ms: DEV2-VIP--/rec/v4/user-recordings/",806,72,77,80,83,93,100,120,150,210
+"POST 1 SLOW 250.0ms -- 500.0ms: DEV2-VIP--/rec/v4/user-recordings/",21,370,400,410,410,470,480,490,490,490
+"POST 2 VERY SLOW 500.0ms -- 1000ms: DEV2-VIP--/rec/v4/user-recordings/",15,670,790,830,870,880,890,890,890,890
+"POST 3 USER WAIT 1000ms -- 3000ms: DEV2-VIP--/rec/v4/user-recordings/",27,1700,2000,2100,2200,2500,2600,2700,2700,2700
+"POST 4 LONG USER WAIT 3000ms -- 6000ms: DEV2-VIP--/rec/v4/user-recordings/",5,3500,3800,3800,4100,4100,4100,4100,4100,4100
+"Total",874,73,79,84,88,120,590,1800,2400,4100

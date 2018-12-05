@@ -215,6 +215,35 @@ Procedures:
       fresh procedure stats: false
       ramp up stats seperate: false
 
+
+
+
+
+
+LoadRunner Settings:
+  RPC Settings:
+    port: 80
+    endpoint: /LoadServer
+
+  Locust UI Settings:
+    port: 8089
+    max wait: 1
+
+  Locust Runner Settings:
+    port: 5557
+    SLA Response Time Cutoff ms: 150
+    To Failure Max Consecutive Frames Failed: 3
+    To Failure Test Prefix: "To Failure"
+    stat reporting interval: 2
+
+  Servers:
+    Potential Servers:
+      - "0.0.0.0"
+      - b-gp2-lgen-8.imovetv.com
+      - b-gp2-lgen-9.imovetv.com
+
+
+
 DataBase Settings:
   Environments:
     DEV1:
@@ -525,6 +554,7 @@ RecAPI Settings:
     - Small Db
     - Large Db
     - Nginx Check
+    - Bind Recording
 
 Playback Settings:
   Playback Routes:

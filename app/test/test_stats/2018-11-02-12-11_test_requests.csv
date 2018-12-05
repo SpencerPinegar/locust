@@ -1,0 +1,9 @@
+"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
+"GET","Designing Spaces 13534858",19,0,89,89,20,151,974084,1.46
+"GET","Flip or Flop 13533942",2,0,57,64,57,72,2356,0.15
+"GET","Flip or Flop 13533944",7,0,81,83,58,130,755102,0.54
+"GET","Live PD 13572006",2,0,90,91,90,93,1166360,0.15
+"GET","Live PD 13572007",1,0,130,130,130,130,1173504,0.08
+"GET","Skyfall 13573072",1,0,81,81,81,81,1323152,0.08
+"GET","Unsolved Mysteries 13534862",7,0,64,79,39,182,723572,0.54
+"None","Total",39,0,83,85,20,182,863908,2.99

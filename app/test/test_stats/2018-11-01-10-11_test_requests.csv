@@ -1,0 +1,26 @@
+"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
+"GET","Anderson Cooper 360 13440578",68,0,20,34,10,498,207052,2.85
+"GET","B.A.P.S. 13468223",71,0,24,46,9,541,365718,2.97
+"GET","CNN Tonight With Don Lemon 13471789",74,0,22,44,9,345,367107,3.10
+"GET","CNN Tonight With Don Lemon 13471842",77,0,19,46,10,575,182596,3.22
+"GET","Cindy Crawford on beauty 13430226",50,0,36,42,10,104,393819,2.09
+"GET","Cuomo Primetime 13471782",73,0,26,35,10,197,318903,3.06
+"GET","Early Start With Christine Romans and Dave Briggs 13471798",77,0,23,51,9,413,405954,3.22
+"GET","Early Start With Christine Romans and Dave Briggs 13471851",77,0,19,32,10,476,164457,3.22
+"GET","House Hunters 13430231",54,0,21,36,9,268,220531,2.26
+"GET","House Hunters 13430261",56,0,20,38,9,446,223400,2.34
+"GET","House Hunters International 13430227",53,0,20,35,10,378,222392,2.22
+"GET","House Hunters International 13430297",59,0,27,55,10,432,402740,2.47
+"GET","Lara Croft Tomb Raider: The Cradle of Life 13434099",62,0,23,44,10,331,345066,2.59
+"GET","Looking for a Medicare plan? 13432017",62,0,16,27,9,205,138807,2.59
+"GET","Love & Hip Hop Hollywood 13468218",68,0,28,43,10,165,429033,2.85
+"GET","Love & Hip Hop Hollywood 13468219",71,0,27,51,10,381,444499,2.97
+"GET","New Larry King Update 13430222",50,0,23,36,9,111,382565,2.09
+"GET","PIYO WORKOUT! 13430208",17,0,55,120,11,574,307404,0.71
+"GET","Property Brothers 13430255",56,0,21,39,10,554,221662,2.34
+"GET","Property Brothers 13430262",56,0,22,54,10,393,413666,2.34
+"GET","SpongeBob SquarePants 13564974",80,0,19,36,10,597,215514,3.35
+"GET","The Amazing World of Gumball 13439853",65,0,26,36,10,122,402321,2.72
+"GET","The Amazing World of Gumball 13439887",65,0,25,38,10,149,385171,2.72
+"GET","Try Total Gym for $14.95 13430206",2,0,180,259,180,339,6887,0.08
+"None","Total",1443,0,23,42,9,597,309937,60.39

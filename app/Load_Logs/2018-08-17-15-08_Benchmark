@@ -1,0 +1,22 @@
+[2018-08-17 15:13:46,293] Spencers-MacBook-Pro.local/ERROR/locust.main: Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.
+[2018-08-17 15:13:52,068] Spencers-MacBook-Pro.local/ERROR/locust.main: Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.
+[2018-08-17 15:13:57,908] Spencers-MacBook-Pro.local/ERROR/locust.main: Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.
+[2018-08-17 15:14:03,623] Spencers-MacBook-Pro.local/ERROR/locust.main: Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.
+[2018-08-17 15:14:09,448] Spencers-MacBook-Pro.local/ERROR/locust.main: Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.
+[2018-08-17 15:14:29,161] Spencers-MacBook-Pro.local/ERROR/locust.main: Could not find any locustfile! Ensure file ends in '.py' and see --help for available options.
+[2018-08-17 15:36:55,884] Spencers-MacBook-Pro.local/ERROR/stderr: Traceback (most recent call last):
+[2018-08-17 15:36:55,889] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/greenlet.py", line 716, in gevent._greenlet.Greenlet.run
+[2018-08-17 15:36:55,889] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/runners.py", line 334, in client_listener
+[2018-08-17 15:36:55,890] Spencers-MacBook-Pro.local/ERROR/stderr: self.clients[msg.node_id].state = STATE_HATCHING
+[2018-08-17 15:36:55,890] Spencers-MacBook-Pro.local/ERROR/stderr: KeyError: u'Spencers-MacBook-Pro.local_8dfd3875bf711f6896bdb8c768c8a900'
+[2018-08-17 15:36:55,890] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-17T21:36:55Z
+[2018-08-17 15:36:55,890] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 15:36:55,890] Spencers-MacBook-Pro.local/ERROR/stderr: <Greenlet "Greenlet-0" at 0x103931470: <bound method MasterLocustRunner.client_listener of <locust.runners.MasterLocustRunner object at 0x103978190>>> failed with KeyError
+[2018-08-17 15:36:57,737] Spencers-MacBook-Pro.local/ERROR/stderr: Traceback (most recent call last):
+[2018-08-17 15:36:57,737] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/greenlet.py", line 716, in gevent._greenlet.Greenlet.run
+[2018-08-17 15:36:57,737] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/runners.py", line 334, in client_listener
+[2018-08-17 15:36:57,738] Spencers-MacBook-Pro.local/ERROR/stderr: self.clients[msg.node_id].state = STATE_HATCHING
+[2018-08-17 15:36:57,738] Spencers-MacBook-Pro.local/ERROR/stderr: KeyError: u'Spencers-MacBook-Pro.local_8dfd3875bf711f6896bdb8c768c8a900'
+[2018-08-17 15:36:57,738] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-17T21:36:57Z
+[2018-08-17 15:36:57,738] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-17 15:36:57,738] Spencers-MacBook-Pro.local/ERROR/stderr: <Greenlet "Greenlet-0" at 0x10c0e8470: <bound method MasterLocustRunner.client_listener of <locust.runners.MasterLocustRunner object at 0x10c12f190>>> failed with KeyError

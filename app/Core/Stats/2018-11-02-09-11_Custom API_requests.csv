@@ -1,0 +1,3 @@
+"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
+"POST","DEV2:1  -  /rec/v1/user-recordings/",289,0,5200,5713,3873,8907,36739,8.94
+"None","Total",289,0,5200,5713,3873,8907,36739,8.94

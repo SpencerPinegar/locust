@@ -1,0 +1,3 @@
+"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
+"POST","DEV2:VIP  -  /rec/v1/user-recspace/",308,0,80,106,40,236,188,14.02
+"None","Total",308,0,80,106,40,236,188,14.02

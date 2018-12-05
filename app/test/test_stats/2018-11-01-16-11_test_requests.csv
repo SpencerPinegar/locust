@@ -1,0 +1,28 @@
+"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
+"GET","Anderson Cooper 360 13440578",65,0,20,50,10,504,206453,2.55
+"GET","At This Hour With Kate Bolduan 13471834",77,0,26,38,10,343,348202,3.02
+"GET","CNN Newsroom With Brooke Baldwin 13471791",71,0,27,44,10,417,361862,2.78
+"GET","CNN Newsroom With Brooke Baldwin 13471814",74,0,27,37,9,194,371713,2.90
+"GET","CNN Tonight With Don Lemon 13471789",68,0,26,40,10,357,359659,2.67
+"GET","CNN Tonight With Don Lemon 13471842",80,0,18,32,10,445,182909,3.14
+"GET","Cuomo Primetime 13471782",65,0,25,42,10,360,325752,2.55
+"GET","Early Start With Christine Romans and Dave Briggs 13471798",71,0,28,43,11,475,406274,2.78
+"GET","Early Start With Christine Romans and Dave Briggs 13471851",83,0,19,23,10,99,166254,3.25
+"GET","Flip or Flop 13430270",13,0,62,71,11,303,293056,0.51
+"GET","Flip or Flop 13430294",53,0,28,44,9,167,433584,2.08
+"GET","Flip or Flop 13430305",56,0,29,40,10,102,452523,2.20
+"GET","Flip or Flop Atlanta 13430285",48,0,28,41,10,129,406825,1.88
+"GET","Flip or Flop Atlanta 13430288",49,0,28,59,10,383,389904,1.92
+"GET","Flip or Flop Atlanta 13430293",53,0,24,35,10,82,414029,2.08
+"GET","Flip or Flop Atlanta 13430309",56,0,28,37,10,109,419362,2.20
+"GET","House Hunters International 13430297",53,0,24,36,10,106,401443,2.08
+"GET","Inside Politics 13440569",65,0,27,40,10,317,364555,2.55
+"GET","Knight and Day 13434131",62,0,23,51,10,599,245915,2.43
+"GET","Lara Croft Tomb Raider: The Cradle of Life 13434099",62,0,25,36,10,248,345066,2.43
+"GET","Looking for a Medicare plan? 13432017",59,0,17,39,10,474,142583,2.31
+"GET","NCIS 13431577",59,0,25,36,10,110,369478,2.31
+"GET","Situation Room With Wolf Blitzer 13471784",68,0,24,38,10,88,372654,2.67
+"GET","SpongeBob SquarePants 13564974",83,0,21,33,10,242,215158,3.25
+"GET","The Lead With Jake Tapper 13471817",74,0,27,41,10,319,389455,2.90
+"GET","Wolf 13471831",77,0,25,39,10,113,361021,3.02
+"None","Total",1644,0,25,39,9,599,331005,64.46

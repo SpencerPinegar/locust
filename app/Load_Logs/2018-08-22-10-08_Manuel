@@ -1,0 +1,24 @@
+[2018-08-22 10:20:34,006] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-22 10:20:34,006] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-22T16:20:34Z
+[2018-08-22 10:20:34,007] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-22 10:26:38,428] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-22 10:26:38,428] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-22T16:26:38Z
+[2018-08-22 10:26:38,428] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-22 10:29:06,228] Spencers-MacBook-Pro.local/ERROR/stderr: Traceback (most recent call last):
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: File "src/gevent/greenlet.py", line 716, in gevent._greenlet.Greenlet.run
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/stats.py", line 661, in stats_writer
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: write_stat_csvs(base_filepath)
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/stats.py", line 671, in write_stat_csvs
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: f.write(distribution_csv())
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/stats.py", line 731, in distribution_csv
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: rows.append(s.percentile(tpl='"%s",%i,%i,%i,%i,%i,%i,%i,%i,%i,%i'))
+[2018-08-22 10:29:06,229] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/stats.py", line 461, in percentile
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: self.get_response_time_percentile(0.95),
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/stats.py", line 409, in get_response_time_percentile
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: return calculate_response_time_percentile(self.response_times, self.num_requests, percent)
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: File "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/lib/python2.7/site-packages/locust/stats.py", line 51, in calculate_response_time_percentile
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: for response_time in sorted(six.iterkeys(response_times), reverse=True):
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: KeyboardInterrupt
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: 2018-08-22T16:29:06Z
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: 
+[2018-08-22 10:29:06,230] Spencers-MacBook-Pro.local/ERROR/stderr: <Greenlet "Greenlet-0" at 0x1091c8680: stats_writer('/Users/spencerpinegar/PycharmProjects/Performance)> failed with KeyboardInterrupt
