@@ -178,7 +178,7 @@ class APITasks(TaskSet):
         config = Config()
         pool_factory = RequestPoolFactory(config, api_wrap.comp_index, api_wrap.max_comp_index, api_wrap.slave_index,
                                           api_wrap.max_slave_index, 0, [cls.env])
-        cls.api_base_host = config.get_api_host(cls.env, node=api_wrap.node)
+        cls.api_base_host = config.recapi.get_host(cls.env, node=api_wrap.node)
 
         cls._set_tasks()
 
@@ -189,7 +189,7 @@ class APITasks(TaskSet):
         FuncNData = namedtuple("FuncNData", ["data", "func"])
         for api_call_name, api_call_info in cls.api_info.items():
             api_call_name = api_call_name.title()
-            if api_call_name in config.api_routes:
+            if api_call_name in config.recapi.routes:
                 pool_factory.size = get_api_info(api_call_info.values()[0]).size
                 data = pool_factory.get_route_pool_and_ribbon(api_call_name, api_call_info, cls.env)
                 weight_func = obtain_version_number_based_on_weight_func(api_call_info)

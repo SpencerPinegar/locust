@@ -270,8 +270,108 @@ DataBase Settings:
     DataBase Username: dvrcloud
     DataBase Password: dvrcloud_pw
 
+MetaData:
+  Environments:
+    DEV1:
+      VIP Host: d-cg17-dvrmeta.movetv.com
+      Node Host: d-gp2-dvrmeta-{0}.imovetv.com
+      Total Nodes: 3
+    DEV2:
+      VIP Host: d-cg17-dvrmeta2-1.movetv.com
+      Node Host: d-gp2-dvrmeta2-{0}.imovetv.com
+      Total Nodes: 2
+    DEV3:
+      VIP Host: d-cg17-dvrmeta3.movetv.com
+      Node Host: d-gp2-dvrmeta3-{0}.imovetv.com
+      Total Nodes: 3
+    QA:
+      VIP Host: q-cg17-dvrmeta.movetv.com
+      Node Host: q-gp2-dvrmeta-{0}.imovetv.com
+      Total Nodes: 3
+    BETA:
+      VIP Host: b-cg17-dvrmeta.movetv.com
+      Node Host: b-gp2-dvrmeta-{0}.imovetv.com
+      Total Nodes: 3
+    BETA2:
+      VIP Host: b-cg17-dvrmeta2.movetv.com
+      Node Host: b-gp2-dvrmeta2-{0}.imovetv.com
+      Total Nodes: 3
 
-RecAPI Settings:
+
+  API Prefix: /mds/v{version}/{suf}/
+  Routes:
+
+    Get Asset Json:
+      Route: asset/{0}.json
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: false
+      Version 1:
+        Required Fields: null
+        Optional Fields: null
+
+    Get Asset Jpeg:
+      Route: asset/{0}.jpg
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: false
+      Version 1:
+        Required Fields: null
+        Optional Fields: null
+
+    Load Asset:
+      Route: asset
+      Versions: [1]
+      Normal Min: 30
+      Normal Max: 50
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields: null
+
+    Get Airing:
+      Route: airing
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: false
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+        Optional Fields:
+          rs_recspace: int
+          inactive: bool
+          allow_auto_delete: bool
+          description: string
+          subscription_key: int-l
+          prepad: int
+          postpad: int
+
+    Load Airing:
+      Route: airing
+      Versions: [1]
+      Normal Min: null
+      Normal Max: null
+      List: true
+      Version 1:
+        Required Fields:
+          user: {arg1: guid, pos: 0}
+          channel: {arg2: channel_id, pos: 1}
+          asset: {arg3: asset_id, pos: 2}
+        Optional Fields:
+          prepad: int
+          postpad: int
+          lsdvr: guid
+          protected: bool
+
+  Extra Host Routes:
+
+
+
+RecAPI:
   Environments:
      DEV1:
       VIP Host: d-cg17-dvrapi.movetv.com
@@ -300,6 +400,7 @@ RecAPI Settings:
 
 ## This information should match the information listed at
 # https://wiki.movenetworks.com/display/RSCLOUD/DVR+Client+APIs
+  API Prefix: /rec/v{version}/{suf}/
 
   Routes:
 
@@ -546,7 +647,7 @@ RecAPI Settings:
         Optional Fields: null
 
 
-  Misc Tests:
+  Extra Host Routes:
     - Nothing
     - Redundant Ts Segment
     - Basic Network

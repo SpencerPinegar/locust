@@ -201,6 +201,16 @@ class RequestPoolFactory:
             return_data.setdefault(version, version_data)
         return return_data
 
+    def get_unscheduled_schedule_guid_pool(self, env):
+        route_name = "Unscheduled Schedule GUIDS"
+        queery = self.config.get_function_querry(route_name)
+        data = execute_select_statement(self.config, queery, env)
+        return_schedule_guids = []
+        for item in data:
+            return_schedule_guids.append(item[0])
+        return self._chunk_list(data)
+
+
     def get_recent_playback_recording(self, dvrnumber, days_old, count):
         AssetInfo = namedtuple("AssetInfo", ["url", "title"])
         route_name, env = ("Playback", "DEV2")
@@ -234,68 +244,12 @@ class RequestPoolFactory:
         unbound_recs = [UnboundRec(item[0].replace("-", ""), item[1].replace("-", ""), item[2]) for item in execute_select_statement(self.config, querry, env)]
         return self._chunk_list(unbound_recs)
 
-
-
-    def get_redundant_ts_segment_urls(self, env, size):
-        route_name = "Redundant Ts Segment"
-
-        conn = self._get_connection(env)
-        querry = self.config.get_function_querry(route_name)
-        try:
-            with conn.cursor() as cur:
-                cur.execute(querry)
-                data = cur.fetchall()
-        except Exception as e:
-            logger.exception(e)
-            sys.exit(1)
-        else:
-            logger.info("Got QVT")
-            qvt_host = data[0][0]
-            qvt_response = requests.get(qvt_host)
-            if qvt_response.status_code != 200:
-                logger.error("Could not reach QVT Resource {qvt}".format(qvt=qvt_host))
-            qvt_json = json.loads(qvt_response.content)
-            m3u8_host = qvt_json[u"playback_info"][u"m3u8_url_template"]
-            m3u8_host = m3u8_host.replace("$encryption_type$", "internal")
-            m3u8_resposne = requests.get(m3u8_host)
-            if m3u8_resposne.status_code != 200:
-                logger.error("Could not reach M3U8 Resource {M3U8}".format(M3U8=m3u8_host))
-            m3u8_manifest = m3u8_resposne.content
-            for line in m3u8_manifest.splitlines():
-                if line.startswith("#"):
-                    continue
-                else:
-                    #TODO: MAKE IT SO I CAN SELECT BITRATE FROM PARAM
-                    stream = line
-                    break
-
-            stream_host = m3u8_host.replace("internal_master.m3u8", stream)
-            stream_response = requests.get(stream_host)
-            if stream_response.status_code != 200:
-                logger.error("Could not reach Stream Resource {stream}".format(stream=stream_host))
-            stream_content = stream_response.content
-            return_streams = {}
-            for line in stream_content.splitlines():
-                if line.startswith("#"):
-                    continue
-                elif line.endswith(".ts"):
-                    ts_host = m3u8_host.replace("internal_master.m3u8", line)
-                    ts_response = requests.get(ts_host)
-                    if ts_response.status_code != 200:
-                        logger.error("Could not reach Ts Segement {ts}".format(ts=ts_host))
-                    else:
-                        ts_content = ts_response.content
-                        ts_hash = hashlib.md5(str(ts_content)).hexdigest()
-                        return_streams.setdefault(ts_host, ts_hash)
-                        if len(return_streams) is size:
-                            return list(return_streams.items())
-            logger.error("Could Not find enough ts Segments")
 # #
     # TODO: Create Functions To get Create/Delete Request Pools
 
     def _get_route(self, route, version):
         version = int(version)
-        return self.config.get_api_route(route, version)
+        return self.config.recapi.get_route(route, version)
 
     def _get_pool(self, route, version, version_params, env):
         sql_route, req_fields, accept_opt_fields, d_element_size_lb, d_element_size_ub, is_list = self._get_route_version_info(route, version)
@@ -337,7 +291,7 @@ class RequestPoolFactory:
         return self.env_db_connections[env]
 
     def _get_route_version_info(self, route, version):
-        sql_route, versions_info, min_norm, max_norm, is_list = self.config.get_api_route_specs(route)
+        sql_route, versions_info, min_norm, max_norm, is_list = self.config.recapi.get_route_specs(route)
         version = int(version)
         version_info = versions_info[version]
         req_fields = version_info["Required Fields"]

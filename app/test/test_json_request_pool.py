@@ -570,7 +570,7 @@ class TestTwoStateRequestPool(TestRequestPool):
         for version, version_params in version_info.items():
             pool = version_params.pool
             route = version_params.route
-            route = self.config.get_api_host(env) + route
+            route = self.config.recapi.get_host(env) + route
             api_info = get_api_info(api_call[version])
             self.assertEqual(api_info.size, len(pool), "The pool created was not the correct size")
             pool.close(route)
@@ -662,7 +662,7 @@ class TestTwoStateRequestPool(TestRequestPool):
         for version, version_params in version_info.items():
             pool = version_params.pool
             route = version_params.route
-            route = self.config.get_api_host(env) + route
+            route = self.config.recapi.get_host(env) + route
             api_info = get_api_info(api_call[version])
             self.assertEqual(api_info.size, len(pool), "The pool created was not the correct size")
             pool.close(route)

@@ -28,7 +28,7 @@ class LocustTest(TestCase):
         self.expected_api_env = {"DEV1", "DEV2", "DEV3", "QA", "BETA", "BETA2"}
         self.config = Config(debug=False)
         self.PoolFactory = RequestPoolFactory(self.config, 0, 0, 0, 0, None, envs={"DEV2"})
-        self.dev2_host = self.config.get_api_host("DEV2")
+        self.dev2_host = self.config.recapi.get_host("DEV2")
         self.ran_inner_setup = True
         self.min_requests = 50
         # THESE STATS ARE USED WHEN RUNNING THE LOAD RUNNER
@@ -97,10 +97,10 @@ class LocustTest(TestCase):
     def _test_undistributed_api(self, route, max_request, assume_tcp=False, bin_by_resp=False, version = None,
                                 assert_results=True):
         try:
-            lb, ub = self.config.get_api_route_normal_min_max(route)
+            lb, ub = self.config.recapi.get_route_normal_min_max(route)
         except KeyError:
             lb, ub = 10, 10
-        versions = self.config.get_route_versions(route)
+        versions = self.config.recapi.get_route_versions(route)
         api_call_route_info = self.__get_default_api_route_info(route, version)
         # versions= [1]
         # route_api_call_weight = {}
@@ -169,10 +169,10 @@ class LocustTest(TestCase):
 
 
     def __get_default_api_route_info(self, route, version):
-        versions = self.config.get_route_versions(route) if version is None else [version]
+        versions = self.config.recapi.get_route_versions(route) if version is None else [version]
         route_api_call_weight = {}
         try:
-            lb, ub = self.config.get_api_route_normal_min_max(route)
+            lb, ub = self.config.recapi.get_route_normal_min_max(route)
             for version in versions:
                 route_api_call_weight.setdefault(int(version), build_api_info(self.weight, self.size, lb, ub))
             api_call_weight = {route: route_api_call_weight}

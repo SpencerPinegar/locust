@@ -296,7 +296,7 @@ class LoadRunner:
         # if its a route then go get the max size and set the size key
         # in the api locust setup when the locust is grabbing it's data set reset the size to the current size
         for api_route, api_version_info in api_info.items():
-            if api_route.title() in self.config.api_routes:
+            if api_route.title() in self.config.recapi.routes:
                 route_size = self._get_pool_length(api_route.title(), env, api_version_info, env)
                 for version_info in api_version_info.values():
                     version_info[size_key] = route_size
@@ -469,10 +469,10 @@ class LoadRunner:
 
     def __get_host(self, options):
         if isinstance(options, APIWrap):
-            host = self.config.get_api_host(options.env, options.node)
+            host = self.config.recapi.get_host(options.env, options.node)
             return host
         elif isinstance(options, PlaybackWrap):
-            host = self.config.get_api_host("DEV2", 0)
+            host = self.config.recapi.get_host("DEV2", 0)
             return host
 
     def __set_virtual_env(self):
@@ -536,12 +536,12 @@ class LoadRunner:
         given_routes = api_call_weight.keys()
         # validate the route is an actual route
         for given_route in given_routes:
-            if not self.config.is_route(given_route):
+            if not self.config.is_eligible_route(given_route):
                 raise InvalidRoute("{inv_route} is not a valid route".format(inv_route=given_route))
             route_params = api_call_weight[given_route]
             # validate the version is an actual version of the route
             for route_version in route_params.keys():
-                if not self.config.is_version(given_route, int(route_version)):
+                if not self.config.recapi.is_version(given_route, int(route_version)):
                     raise InvalidAPIVersion("{version} is not a valid version for route {route}".format(
                         version=route_version, route=given_route
                     ))
@@ -553,11 +553,11 @@ class LoadRunner:
                                                               version=route_version))
 
     def __verify_env(self, env):
-        if not self.config.is_api_env(env):
+        if not self.config.recapi.is_env(env):
             raise InvalidAPIEnv("{env} is not a valid Env".format(env=env))
 
     def __verify_node(self, env, node):
-        if not self.config.is_node(env, node):
+        if not self.config.recapi.is_node(env, node):
             raise InvalidAPINode("{env} does not have node {inv_node}".format(
                 env=env, inv_node=node
             ))
