@@ -259,6 +259,7 @@ LoadRunner Settings:
 
   Servers:
     Potential Servers:
+      - 0.0.0.0
       - b-gp2-lgen-8.imovetv.com
       - b-gp2-lgen-9.imovetv.com
 

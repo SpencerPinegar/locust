@@ -15,7 +15,7 @@ from app.Core.exceptions import (SlaveInitilizationException, InvalidRoute, Inva
                                  InvalidCodec, OptionTypeError, TestAlreadyRunning, NotEnoughAvailableCores)
 from app.Utils.environment_wrapper import (PlaybackEnvironmentWrapper as PlaybackWrap,
                                            RecAPIEnvironmentWrapper as RecAPIWrap, MetaDataEnvironmentWrapper as MDWrap)
-from app.Utils.utils import size_key, API_VERSION_KEYS
+from app.Utils.utils import size_key, API_VERSION_KEYS, clean_stdout
 from app.Data.request_pool import RequestPoolFactory
 from app.Core.automated_test_case import AutomatedTestCase
 from app.Core.locust_ui_client import LocustUIClient
@@ -655,7 +655,9 @@ class LoadRunner:
                         info_list, return_code = self._kill_test()
                         print("\n")
                         for i in range(len(info_list)):
-                            print("Return Code: {0}, OUT: {1}".format(return_code[i], info_list[i]))
+                            print("Process {3} -- -- --- -- -- -- -- -- --"
+                                  "\n    Return Code: {0}\n---- OUT ----\n{1}\n---- Err ----- \n{2}".format(
+                                return_code[i], info_list[i].stdout, info_list[i].stderr, i + 1))
                     raise ConnectionError("LOCUST UI WAS NOT ABLE TO OPEN")
             else:
                 break
@@ -699,6 +701,7 @@ class LoadRunner:
         return info, return_code
 
     def __safe_kill(self, process):
+        ProcOutput = namedtuple("ProcOutput", ["stdout", "stderr"])
         if process is None:
             return "Process was None", -15
         try:
@@ -706,6 +709,9 @@ class LoadRunner:
                 process.kill()
             return_code = 0 if process.poll() == -9 else process.poll()
             info = process.communicate()
+            stdout = "" if not info[0] else clean_stdout(info[0])
+            stderr = "" if not info[1] else clean_stdout(info[1])
+            info = ProcOutput(stdout, stderr)
             return info, return_code
         except OSError as e:
             if e.strerror == "No such process":
