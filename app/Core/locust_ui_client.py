@@ -29,7 +29,7 @@ PROJECT_DIR = os.path.dirname(API_LOAD_TEST_DIR)
 STATS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Stats")
 LOGS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Load_Logs")
 PLAYBACK_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/playback_locust.py")
-API_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/api_locust.py")
+API_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/recapi_locust.py")
 DUMMY_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/master_locust.py")
 
 LocustFilePaths = namedtuple('LoucstFilePaths', ["web_host", "api", "playback"])

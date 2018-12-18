@@ -5,6 +5,8 @@ import logging
 import math
 import datetime
 import time
+import subprocess32 as sp
+import socket
 from collections import namedtuple
 from multiprocessing import Process
 from requests.exceptions import ConnectionError
@@ -12,12 +14,12 @@ from app.Core.exceptions import (SlaveInitilizationException, InvalidRoute, Inva
                                  InvalidPlaybackRoute, InvalidAPIVersion, InvalidAPINode, InvalidAPIVersionParams,
                                  InvalidCodec, OptionTypeError, TestAlreadyRunning, NotEnoughAvailableCores)
 from app.Utils.environment_wrapper import (PlaybackEnvironmentWrapper as PlaybackWrap,
-                                           APIEnvironmentWrapper as APIWrap, )
+                                           RecAPIEnvironmentWrapper as RecAPIWrap, MetaDataEnvironmentWrapper as MDWrap)
 from app.Utils.utils import size_key, API_VERSION_KEYS
 from app.Data.request_pool import RequestPoolFactory
 from app.Core.automated_test_case import AutomatedTestCase
 from app.Core.locust_ui_client import LocustUIClient
-from app.Core.run_locust import run_locust
+from app.Core.run_locust import run_locust, create_master_options, create_slave_options, create_undistributed_options
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -31,13 +33,15 @@ PROJECT_DIR = os.path.dirname(API_LOAD_TEST_DIR)
 
 STATS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Stats")
 LOGS_FOLDER = os.path.join(API_LOAD_TEST_DIR, "Load_Logs")
+
+METADATA_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix +"/metadata_locust.py")
 PLAYBACK_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/playback_locust.py")
-API_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/api_locust.py")
+API_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/recapi_locust.py")
 DUMMY_LOCUST_FILE = os.path.join(API_LOAD_TEST_DIR, locust_file_prefix + "/master_locust.py")
 
-LocustFilePaths = namedtuple('LoucstFilePaths', ["web_host", "api", "playback"])
+LocustFilePaths = namedtuple('LoucstFilePaths', ["web_host", "api", "playback", "metadata"])
 
-locust_file_paths = LocustFilePaths(DUMMY_LOCUST_FILE, API_LOCUST_FILE, PLAYBACK_LOCUST_FILE)
+locust_file_paths = LocustFilePaths(DUMMY_LOCUST_FILE, API_LOCUST_FILE, PLAYBACK_LOCUST_FILE, METADATA_LOCUST_FILE)
 
 
 # TODO: Make salt stack configuration for build out on machines
@@ -48,6 +52,7 @@ class LoadRunner:
     CPU_measure_interval = .5
     Assumed_cpu_used = 5
     Assumed_load_average_added = 1
+    Max_Process_Wait_Time = 1
 
 
     Current_Automated_Test_Msg = u"An automated test is currently running on this server - view it through the UI"
@@ -95,6 +100,20 @@ class LoadRunner:
         self.web_client = LocustUIClient(self.config.preferred_master, self.config.locust_ui_port,
                                          self.config.locust_ui_max_wait)
         self.__set_virtual_env()
+        self._debug = False
+
+    @property
+    def debug(self):
+        return self._debug
+
+
+    @debug.setter
+    def debug(self, value):
+        if not isinstance(value, bool):
+            return
+        self._kill_test()
+        self._debug = value
+
 
     @property
     def users(self):
@@ -190,6 +209,7 @@ class LoadRunner:
                 return False
 
     def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
+
         # TODO find a way to distribute segemented test data when running
         pass
 
@@ -201,27 +221,27 @@ class LoadRunner:
         options = self._get_playback_options(client, playback_route, quality, codecs, stat_int, users, dvr, days_old)
         self._run_multi_core(options, locust_file_paths.web_host, locust_file_paths.playback)
 
-    def custom_api_test(self, api_info, env, node, max_request, stat_interval=None,
-                        assume_tcp=False, bin_by_resp=False):
+    def custom_recapi_test(self, api_info, env, node, max_request, stat_interval=None,
+                           assume_tcp=False, bin_by_resp=False):
         self.__raise_if_running()
         self.stop_tests()
-        self._verify_api_params(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
-        file_prefix = "Custom API"
-        options = self._get_api_options(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
+        self._verify_recapi_params(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
+        file_prefix = "Custom_API"
+        options = self._get_recapi_options(api_info, env, node, max_request, stat_interval, assume_tcp, bin_by_resp)
         self._run_multi_core(options, locust_file_paths.web_host, locust_file_paths.api,
                              stats_file_name=file_prefix, stats_folder=STATS_FOLDER,
                              log_file_name=file_prefix, log_folder=LOGS_FOLDER,
                              log_level="ERROR")
 
-    def custom_api_to_failure(self, api_call_weight, env, node, stat_interval=None):
+    def custom_recapi_to_failure(self, api_call_weight, env, node, stat_interval=None):
         self.__raise_if_running()
         self.stop_tests()
         # Here are some constants of this test
-        file_prefix = "Failure API"
+        file_prefix = "Failure_API"
         max_reqeust = False
         assume_tcp = False
         bin_by_resp = True
-        self._verify_api_params(api_call_weight, env, node, max_reqeust, stat_interval, assume_tcp, bin_by_resp)
+        self._verify_recapi_params(api_call_weight, env, node, max_reqeust, stat_interval, assume_tcp, bin_by_resp)
 
     def run_automated_test_case(self, setup_name, procedure_name):
         # TODO implement way to run benchmark test
@@ -250,8 +270,6 @@ class LoadRunner:
 
 
 
-
-
     ########################################################################################################################
     ##########################################  Server Utility #############################################################
     ########################################################################################################################
@@ -265,15 +283,14 @@ class LoadRunner:
             raise TestAlreadyRunning(LoadRunner.Current_Custom_Test_Msg)
 
     def _kill_test(self):
-        for process in self._processes:
-            process.terminate()
-            process.join()
-        self._processes = []
-
-
-
-
-
+        if self.debug:
+            for process in self._processes:
+                process.terminate()
+                process.join()
+            self._processes = []
+        else:
+            info_list, return_codes = self.__fresh_state(False)
+            return info_list, return_codes
 
     def _get_pool_length(self, route, env, *args):
         pool_factory = RequestPoolFactory(self.config, 0, 0, 0, 0, None, [env])
@@ -289,8 +306,8 @@ class LoadRunner:
     ########################################################################################################################
 
     # These are options creation commands
-    def _get_api_options(self, api_info, env, node, max_req, stat_interval,
-                         assume_tcp, bin_by_resp_time, comp_idx=0, max_comp_idx=0):
+    def _get_recapi_options(self, api_info, env, node, max_req, stat_interval,
+                            assume_tcp, bin_by_resp_time, comp_idx=0, max_comp_idx=0):
         # TODO find easy way to set size for each api list we will be grabbing
         # 1. Iterate through each api route key.
         # if its a route then go get the max size and set the size key
@@ -300,14 +317,18 @@ class LoadRunner:
                 route_size = self._get_pool_length(api_route.title(), env, api_version_info, env)
                 for version_info in api_version_info.values():
                     version_info[size_key] = route_size
-        return APIWrap(api_info, node, env, max_req, assume_tcp, bin_by_resp_time, stat_interval,
-                       comp_idx, 0, max_comp_idx, 0, 0)
+        return RecAPIWrap(api_info, node, env, max_req, assume_tcp, bin_by_resp_time, stat_interval,
+                          comp_idx, 0, max_comp_idx, 0, 0)
 
     def _get_playback_options(self, client, playback_route, quality, codecs, stat_interval, users, dvr, days_old,
                               comp_idx=0, max_comp_idx=0):
         overall_size = self._get_pool_length(playback_route, "DEV2", dvr, days_old, users)
         return PlaybackWrap(playback_route, quality, codecs, client, users, dvr, days_old, stat_interval,
                             comp_idx, 0, max_comp_idx, 0, overall_size)
+
+    def _get_metadata_options(self, action, put_size, env, node, stat_interval, comp_idx=0, max_comp_idx=0):
+       return MDWrap(action, node, env, put_size, stat_interval, comp_idx, 0, max_comp_idx, 0, 200)
+
 
     def _get_locust_options(self, host, locust_file, log_level, log_file,
                              slave, expected_slaves=None, stats_file=None):
@@ -386,9 +407,13 @@ class LoadRunner:
     ########################################################################################################################
 
     def _run_distributed(self, env_options, master_locust_file, slave_locust_file):
+        host_name = socket.getfqdn()
+
+
         pass
 
-    # TODO: change back
+
+
     def _run_multi_core(self, env_options, master_locust_file, slave_locust_file,
                         stats_file_name=None, log_level=None, log_file_name=None,
                         stats_folder=None, log_folder=None, expected_slaves=None):
@@ -418,28 +443,16 @@ class LoadRunner:
             self.expected_slaves = expected_slaves
             env_options.max_slave_index = available_cores - 1
 
-        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
 
         #create the master web ui if neccesary
+        stats_file_name, log_file_name = self.__get_file_paths(stats_folder, stats_file_name, log_folder, log_file_name)
         if is_master:
             master_options = self._get_locust_options(host, master_locust_file, log_level, log_file_name, False,
                                                       self.expected_slaves, stats_file_name)
-            master_process = Process(target=run_locust, args=(master_options,))
-            master_process.daemon = True
-            master_process.start()
-            self._processes.append(master_process)
+            self.__start_web_master(master_options, env_options)
 
         slave_options = self._get_locust_options(host, slave_locust_file, log_level, log_file_name, True, None, stats_file_name)
-
-        env_options.slave_index = 0
-        # create the slaves
-        for index in range(env_options.max_slave_index + 1):
-            env_options.stamp_env()
-            slave_process = Process(target=run_locust, args=(slave_options,))
-            slave_process.daemon = True
-            slave_process.start()
-            self._processes.append(slave_process)
-            env_options.slave_index += 1
+        self.__start_slaves(slave_options, env_options)
         self.__wait_till_loaded()
 
 
@@ -451,12 +464,46 @@ class LoadRunner:
         local_options = self._get_locust_options(host, locust_file, log_level, log_file_name, False, None, stats_file_name)
         self.expected_slaves = 0
         env_options.stamp_env()
-        p = Process(target=run_locust, args=(local_options, ))
-        p.daemon =True
-        p.start()
-        self._processes.append(p)
+        if self.debug:
+            p = Process(target=run_locust, args=(local_options, ))
+            p.daemon =True
+            p.start()
+            self._processes.append(p)
+        else:
+            local_options_cmdl = create_undistributed_options(local_options)
+            p = self.__create_process(local_options_cmdl)
+            self._processes.append(p)
         self.__wait_till_loaded()
 
+
+    def __start_web_master(self, master_options, env_options):
+        env_options.stamp_env()
+        if self.debug:
+            master_process = Process(target=run_locust, args=(master_options,))
+            master_process.daemon = True
+            master_process.start()
+            self._processes.append(master_process)
+        else:
+            master_options_cmdl = create_master_options(master_options)
+            master_process = self.__create_process(master_options_cmdl)
+            self._processes.append(master_process)
+
+
+    def __start_slaves(self, slave_options, env_options):
+        env_options.slave_index = 0
+        # create the slaves
+        for index in range(env_options.max_slave_index + 1):
+            env_options.stamp_env()
+            if self.debug:
+                slave_process = Process(target=run_locust, args=(slave_options,))
+                slave_process.daemon = True
+                slave_process.start()
+                self._processes.append(slave_process)
+            else:
+                slave_options_cmdl = create_slave_options(slave_options)
+                slave_process = self.__create_process(slave_options_cmdl)
+                self._processes.append(slave_process)
+            env_options.slave_index += 1
 
 
     ########################################################################################################################
@@ -468,7 +515,7 @@ class LoadRunner:
 
 
     def __get_host(self, options):
-        if isinstance(options, APIWrap):
+        if isinstance(options, RecAPIWrap):
             host = self.config.recapi.get_host(options.env, options.node)
             return host
         elif isinstance(options, PlaybackWrap):
@@ -476,20 +523,31 @@ class LoadRunner:
             return host
 
     def __set_virtual_env(self):
-        if not hasattr(sys, 'real_prefix'):
-            PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
+        PROJECT_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-            LOCALVENV_DIR = os.path.join(PROJECT_DIR, "localVenv/")
-            VENV_DIR = os.path.join(PROJECT_DIR, "venv/")
-            activate_virtual_env_path = "bin/activate_this.py"
-            if os.path.isdir(LOCALVENV_DIR):
-                path = os.path.join(LOCALVENV_DIR, activate_virtual_env_path)
+        LOCALVENV_DIR = os.path.join(PROJECT_DIR, "localVenv/")
+        VENV_DIR = os.path.join(PROJECT_DIR, "venv/")
+        bin_dir = "bin:"
+        activate_virtual_env_path = "bin/activate_this.py"
+        if os.path.isdir(LOCALVENV_DIR):
+            bin_path = LOCALVENV_DIR + bin_dir
+            if bin_path not in os.environ["PATH"]:
+                os.environ["PATH"] = bin_path + os.environ["PATH"]
+
+            path = os.path.join(LOCALVENV_DIR, activate_virtual_env_path)
+            if not hasattr(sys, 'real_prefix'):
                 execfile(path, dict(__file__=path))
-            elif os.path.isdir(VENV_DIR):
-                path = os.path.join(VENV_DIR, activate_virtual_env_path)
+
+        elif os.path.isdir(VENV_DIR):
+            bin_path = VENV_DIR + bin_dir
+            if bin_path not in os.environ["PATH"]:
+                os.environ["PATH"] = bin_path + os.environ["PATH"]
+            path = os.path.join(VENV_DIR, activate_virtual_env_path)
+            if not hasattr(sys, 'real_prefix'):
                 execfile(path, dict(__file__=path))
-            else:
-                raise Exception("Could not find virutal env")
+        else:
+            raise Exception("Could not find virutal env")
+        return
     ########################################################################################################################
     ##########################################  VERIFY FUNCS  ##############################################################
     ########################################################################################################################
@@ -521,18 +579,19 @@ class LoadRunner:
             self.__verify_int("{} option".format(PlaybackWrap.DVR_KEY), dvr)
             self.__verify_int("{} option".format(PlaybackWrap.DAYS_KEY), days_old)
 
-    def _verify_api_params(self, api_call_weight, env, node, max_request, stat_interval, assume_tcp, bin_by_resp):
+    def _verify_recapi_params(self, api_call_weight, env, node, max_request, stat_interval, assume_tcp, bin_by_resp):
         # check dis locust
-        self.__verify_api_call_weight(api_call_weight)
-        self.__verify_env(env)
-        self.__verify_node(env, node)
-        self.__verify_bool("{} option".format(APIWrap.MAX_RPS_KEY), max_request)
-        self.__verify_bool("{} option".format(APIWrap.ASSUME_TCP_KEY), assume_tcp)
-        self.__verify_bool("{} option".format(APIWrap.BIN_RSP_TIME_KEY), bin_by_resp)
+        recapi_service_name = "recapi"
+        self.__verify_recapi_call_weight(api_call_weight)
+        self.__verify_env(env, recapi_service_name)
+        self.__verify_node(env, node, recapi_service_name)
+        self.__verify_bool("{} option".format(RecAPIWrap.MAX_RPS_KEY), max_request)
+        self.__verify_bool("{} option".format(RecAPIWrap.ASSUME_TCP_KEY), assume_tcp)
+        self.__verify_bool("{} option".format(RecAPIWrap.BIN_RSP_TIME_KEY), bin_by_resp)
         if stat_interval:
-            self.__verify_int("{} option".format(APIWrap.STAT_INT_KEY), stat_interval)
+            self.__verify_int("{} option".format(RecAPIWrap.STAT_INT_KEY), stat_interval)
 
-    def __verify_api_call_weight(self, api_call_weight):
+    def __verify_recapi_call_weight(self, api_call_weight):
         given_routes = api_call_weight.keys()
         # validate the route is an actual route
         for given_route in given_routes:
@@ -552,12 +611,15 @@ class LoadRunner:
                                                       .format(key=neccesary_key, call=given_route,
                                                               version=route_version))
 
-    def __verify_env(self, env):
-        if not self.config.recapi.is_env(env):
+
+    def __verify_env(self, env, service_name):
+        service = getattr(self.config, service_name)
+        if not service.is_env(env):
             raise InvalidAPIEnv("{env} is not a valid Env".format(env=env))
 
-    def __verify_node(self, env, node):
-        if not self.config.recapi.is_node(env, node):
+    def __verify_node(self, env, node, service_name):
+        service = getattr(self.config, service_name)
+        if not service.is_node(env, node):
             raise InvalidAPINode("{env} does not have node {inv_node}".format(
                 env=env, inv_node=node
             ))
@@ -585,8 +647,68 @@ class LoadRunner:
             our_state = self.state
             if our_state != "setup":
                 if retries < 3:
-                    retries =+ 1
+                    retries += 1
                 else:
+                    if self.debug:
+                        self._kill_test()
+                    else:
+                        info_list, return_code = self._kill_test()
+                        print("\n")
+                        for i in range(len(info_list)):
+                            print("Return Code: {0}, OUT: {1}".format(return_code[i], info_list[i]))
                     raise ConnectionError("LOCUST UI WAS NOT ABLE TO OPEN")
             else:
                 break
+
+
+    ########################################################################################################################
+    ##########################################  Subprocess   ##############################################################
+    ########################################################################################################################
+
+
+    def __create_process(self, options):
+        p = sp.Popen(options, stdout=sp.PIPE, stderr=sp.PIPE, stdin=sp.PIPE)
+        return p
+
+    def __fresh_state(self, wait):
+        return_info = []
+        return_codes = []
+        for proc in self._processes:
+            if wait:
+                info, code = self.__safe_wait_kill(proc)
+            else:
+                info, code = self.__safe_kill(proc)
+            return_codes.append(code)
+            return_info.append(info)
+        self.master = None
+        self.slaves = []
+        self.expected_slaves = 0
+        if self.children:
+            raise Exception("unsuccesfully closed all child proccesses")
+        return return_info, return_codes
+
+
+    def __safe_wait_kill(self, process):
+        if process is None:
+            return "Process was None", -15
+        try:
+            return_code = process.wait(timeout=LoadRunner.Max_Process_Wait_Time)
+            info = self.master.communicate()
+        except sp.TimeoutExpired as e:
+            info, return_code = self.__safe_kill(process)
+        return info, return_code
+
+    def __safe_kill(self, process):
+        if process is None:
+            return "Process was None", -15
+        try:
+            while process.poll() is None:
+                process.kill()
+            return_code = 0 if process.poll() == -9 else process.poll()
+            info = process.communicate()
+            return info, return_code
+        except OSError as e:
+            if e.strerror == "No such process":
+                return str(e), -10
+            else:
+                raise e

@@ -197,7 +197,7 @@ class DataFactory:
         return len(users)
 
     def create_users(self, env, desc, count):
-        url = "{0}{1}".format(self.config.recapi.get_host(env), self.config.api.get_route("Update User Settings", 1))
+        url = "{0}{1}".format(self.config.recapi.get_host(env), self.config.recapi.get_route("Update User Settings", 1))
         json_to_post = {"user": "", "description": desc}
         for created_user_count in range(count):
             uuid = str(uuid4())
@@ -292,7 +292,7 @@ class DataFactory:
         #get user guids and find the max amount of rule guids we need
         user_guids = self.__get_user_guids_from_desc(env, desc)
         max_count = count
-        url = "{host}{route}".format(host=self.config.recapi.get_host(env, 1), route=self.config.api.get_route("Create Rules", 4))
+        url = "{host}{route}".format(host=self.config.recapi.get_host(env, 1), route=self.config.recapi.get_route("Create Rules", 4))
         user_rules = {}
         #find out the max number of rules (assuming conflicts) so we only need to do one database interaction
         #store user guids and thier rule guids
@@ -321,7 +321,7 @@ class DataFactory:
 
 
     def delete_rules(self, env, desc, remaining_count):
-        url = "{host}{route}".format(host=self.config.recapi.get_host(env, 0), route=self.config.api.get_route("Delete Rules", 1))
+        url = "{host}{route}".format(host=self.config.recapi.get_host(env, 0), route=self.config.recapi.get_route("Delete Rules", 1))
         user_guids = self.__get_user_guids_from_desc(env, desc)
         for user in user_guids:
             rule_guids = self.__get_user_rule_info(env, user)["rule"]

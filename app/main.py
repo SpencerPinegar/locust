@@ -30,13 +30,13 @@ def is_running():
 
 
 
-@jsonrpc.method("startCustomAPITest(api_call_weight=dict, env=str, node=int, max_request=bool, num_users=int, "
+@jsonrpc.method("startCustomRecAPITest(api_call_weight=dict, env=str, node=int, max_request=bool, num_users=int, "
                 "hatch_rate=float, stat_interval=int, assume_tcp=bool, bin_by_resp=bool) -> dict")
-def start_custom_api_test(api_call_weight, env, node, max_request, num_users, hatch_rate, stat_interval=None,
+def start_custom_recapi_test(api_call_weight, env, node, max_request, num_users, hatch_rate, stat_interval=None,
                       assume_tcp=False, bin_by_resp=False):
     api_call_weight = force_route_version_to_ints(api_call_weight)
-    LoadRunner.PERSISTANT_LOAD_RUNNER.custom_api_test(api_call_weight, env, node, max_request, stat_interval=stat_interval,
-                                                          assume_tcp=assume_tcp, bin_by_resp=bin_by_resp)
+    LoadRunner.PERSISTANT_LOAD_RUNNER.custom_recapi_test(api_call_weight, env, node, max_request, stat_interval=stat_interval,
+                                                         assume_tcp=assume_tcp, bin_by_resp=bin_by_resp)
 
     LoadRunner.PERSISTANT_LOAD_RUNNER.start_ramp_up(num_users, hatch_rate, first_start=True)
     return LoadRunner.PERSISTANT_LOAD_RUNNER.is_running()

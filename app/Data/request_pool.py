@@ -86,6 +86,11 @@ class RequestPoolFactory:
             None,
             self.get_recent_playback_recording,
             self.get_top_n_channels_in_last_day,
+            None,
+            None,
+            None,
+            None,
+            None
         )
         self._m_idx = mchn_idx
         self._max_m_idx = max_mchn_idx
@@ -101,8 +106,8 @@ class RequestPoolFactory:
         route_name = "User Recordings Ribbon"
         return_data = {}
         for version, version_pool_vars in api_info.items():
-            pool = self._get_pool(route_name, version, version_pool_vars, env)
-            route = self._get_route(route_name, version)
+            pool = self._get_pool(route_name, version, version_pool_vars, env, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
@@ -111,8 +116,8 @@ class RequestPoolFactory:
         route_name = "User Franchise Ribbon"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_pool(route_name, version, version_pool_vars, env)
-            route = self._get_route(route_name, version)
+            pool = self._get_pool(route_name, version, version_pool_vars, env, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
@@ -121,8 +126,8 @@ class RequestPoolFactory:
         route_name = "User Recspace Information"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_pool(route_name, version, version_pool_vars, env)
-            route = self._get_route(route_name, version)
+            pool = self._get_pool(route_name, version, version_pool_vars, env, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
@@ -133,15 +138,15 @@ class RequestPoolFactory:
         route_name = "Update User Settings"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_two_state_pool(route_name, version, version_pool_vars, env, start_params, end_params)
-            route = self._get_route(route_name, version)
+            pool = self._get_two_state_pool(route_name, version, version_pool_vars, env, start_params, end_params, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
 
     def get_create_recording_pool_and_route(self, api_call_info, env):
         # TODO: CREATE RECORDINGS HERE
-        return self._chunk_list([], is_version_data=True)
+        return self._chunk_list([])
 
     def get_protect_recordings_pool_and_route(self, api_call_info, env):
         start_params = {"protected": False}
@@ -149,8 +154,8 @@ class RequestPoolFactory:
         route_name = "Protect Recordings"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_two_state_pool(route_name, version, version_pool_vars, env, start_params, end_params)
-            route = self._get_route(route_name, version)
+            pool = self._get_two_state_pool(route_name, version, version_pool_vars, env, start_params, end_params, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
@@ -159,8 +164,8 @@ class RequestPoolFactory:
         route_name = "Mark Watched"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_pool(route_name, version, version_pool_vars, env)
-            route = self._get_route(route_name, version)
+            pool = self._get_pool(route_name, version, version_pool_vars, env, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
@@ -168,11 +173,11 @@ class RequestPoolFactory:
 
     def get_delete_recordings_pool_and_route(self, api_call_info, env):
         # TODO: DELETE Recordings
-        return self._chunk_list([], is_version_data=True)
+        return self._chunk_list([])
 
     def get_create_rules_pool_and_route(self, api_call_info, env):
         # TODO: Create Rules Here
-        return self._chunk_list([], is_version_data=True)
+        return self._chunk_list([])
 
     def get_update_rules_pool_and_route(self, api_call_info, env):
         start_params = {"mode": "all"}
@@ -180,8 +185,8 @@ class RequestPoolFactory:
         route_name = "Update Rules"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_two_state_pool(route_name, version, version_pool_vars, env, start_params, end_params)
-            route = self._get_route(route_name, version)
+            pool = self._get_two_state_pool(route_name, version, version_pool_vars, env, start_params, end_params, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
@@ -195,11 +200,37 @@ class RequestPoolFactory:
         route_name = "List Rules"
         return_data = {}
         for version, version_pool_vars in api_call_info.items():
-            pool = self._get_pool(route_name, version, version_pool_vars, env)
-            route = self._get_route(route_name, version)
+            pool = self._get_pool(route_name, version, version_pool_vars, env, "recapi")
+            route = self._get_route(route_name, version, "recapi")
             version_data = RequestPoolFactory.VersionData(route, pool)
             return_data.setdefault(version, version_data)
         return return_data
+
+
+    def get_load_asset(self, api_call_info, env):
+        route_name = "Load Asset"
+        return_data = {}
+
+        for version, version_pool_vars in api_call_info.items():
+            _, _, _, d_element_size_lb, d_element_size_ub, _ = self._get_route_version_info(route_name, version, "metadata")
+            info = get_api_info(version_pool_vars)
+            the_lb = info.element_lb or d_element_size_lb
+            the_ub = info.element_ub or d_element_size_ub
+            pool = self.get_unscheduled_schedule_guid_pool(env)
+            json_pool = []
+            while pool:
+                schedules_to_pop = min(len(pool), random.randint(the_lb, the_ub))
+                list_of_schedules = []
+                for num_popped in range(schedules_to_pop):
+                    list_of_schedules.append(pool.pop())
+                json_pool.append({"schedule":list_of_schedules})
+            route = self._get_route(route_name, version, "metadata")
+            if route[-1] == r"/":
+                route = route[:-1]
+            version_data = RequestPoolFactory.VersionData(route, self._chunk_list(json_pool))
+            return_data.setdefault(version, version_data)
+        return return_data
+
 
     def get_unscheduled_schedule_guid_pool(self, env):
         route_name = "Unscheduled Schedule GUIDS"
@@ -207,8 +238,8 @@ class RequestPoolFactory:
         data = execute_select_statement(self.config, queery, env)
         return_schedule_guids = []
         for item in data:
-            return_schedule_guids.append(item[0])
-        return self._chunk_list(data)
+            return_schedule_guids.append(item[0].replace("-", ""))
+        return self._chunk_list(return_schedule_guids)
 
 
     def get_recent_playback_recording(self, dvrnumber, days_old, count):
@@ -247,12 +278,13 @@ class RequestPoolFactory:
 # #
     # TODO: Create Functions To get Create/Delete Request Pools
 
-    def _get_route(self, route, version):
+    def _get_route(self, route, version, service_name):
         version = int(version)
-        return self.config.recapi.get_route(route, version)
+        service = getattr(self.config, service_name)
+        return service.get_route(route, version)
 
-    def _get_pool(self, route, version, version_params, env):
-        sql_route, req_fields, accept_opt_fields, d_element_size_lb, d_element_size_ub, is_list = self._get_route_version_info(route, version)
+    def _get_pool(self, route, version, version_params, env, service_name):
+        sql_route, req_fields, accept_opt_fields, d_element_size_lb, d_element_size_ub, is_list = self._get_route_version_info(route, version, service_name)
         call_info = get_api_info(version_params)
         offset_and_size = self._get_start_offset_and_size()
         datapool = _ReadOnlyRequestPool(sql_route, req_fields, accept_opt_fields, call_info.element_lb,
@@ -263,9 +295,9 @@ class RequestPoolFactory:
             datapool.add_optional_defualt_params(**call_info.optional_fields)
         return datapool
 
-    def _get_two_state_pool(self, route, version, version_params, env, start_params, end_params):
+    def _get_two_state_pool(self, route, version, version_params, env, start_params, end_params, service_name):
         sql_route, req_fields, opt_fields, d_element_size_lb, d_element_size_ub, is_list = self._get_route_version_info(
-            route, version)
+            route, version, service_name)
         call_info = get_api_info(version_params)
         offset_and_size = self._get_start_offset_and_size()
         datapool = _TwoStateRequestPool(sql_route, req_fields, opt_fields, call_info.element_lb, call_info.element_ub,
@@ -290,8 +322,9 @@ class RequestPoolFactory:
     def _get_connection(self, env):
         return self.env_db_connections[env]
 
-    def _get_route_version_info(self, route, version):
-        sql_route, versions_info, min_norm, max_norm, is_list = self.config.recapi.get_route_specs(route)
+    def _get_route_version_info(self, route, version, service_name):
+        service = getattr(self.config, service_name)
+        sql_route, versions_info, min_norm, max_norm, is_list = service.get_route_specs(route)
         version = int(version)
         version_info = versions_info[version]
         req_fields = version_info["Required Fields"]

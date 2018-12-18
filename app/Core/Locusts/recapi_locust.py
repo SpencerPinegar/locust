@@ -12,8 +12,8 @@ from app.Data.config import Config
 from app.Data.request_pool import RequestPoolFactory
 from app.Utils.utils import get_api_info, obtain_version_number_based_on_weight_func
 from app.Utils.utils import force_route_version_to_ints
-from app.Utils.route_relations import APIRoutesRelation
-from app.Utils.environment_wrapper import APIEnvironmentWrapper as APIWrap
+from app.Utils.route_relations import RecAPIRoutesRelation
+from app.Utils.environment_wrapper import RecAPIEnvironmentWrapper as APIWrap
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(levelname)-8s %(message)s',
@@ -31,64 +31,64 @@ logging.disable(logging.CRITICAL)
 # TODO: ADD POOLS FOR CREATE/DELETE OPERATIONS -- create/delete recordings, create/delete recording rules
 
 
-class APITasks(TaskSet):
-    ROUTE_DATA = APIRoutesRelation.empty_relation()
+class RecAPITasks(TaskSet):
+    ROUTE_DATA = RecAPIRoutesRelation.empty_relation()
 
     def setup(self):
-        APITasks.setup_based_on_env_vars()
+        RecAPITasks.setup_based_on_env_vars()
 
     def _user_recordings_ribbon(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.USER_RECORDING_RIBBON)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.USER_RECORDING_RIBBON)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _user_franchise_ribbon(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.USER_FRANCHISE_RIBBON)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.USER_FRANCHISE_RIBBON)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _user_recspace_information(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.USER_RECSPACE_INFO)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.USER_RECSPACE_INFO)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _update_user_settings(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.UPDATE_USER_SETTINGS)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.UPDATE_USER_SETTINGS)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _protect_recordings(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.PROTECT_RECORDINGS)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.PROTECT_RECORDINGS)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _mark_watched(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.MARK_WATCHED)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.MARK_WATCHED)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _update_user_rules(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.UPDATE_RULES)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.UPDATE_RULES)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _list_user_rules(locust):
-        info = APITasks.get_json_data_and_url(APIRoutesRelation.LIST_RULES)
-        APITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=APITasks.assume_tcp_loss,
-                           bin_by_resp=APITasks.bin_by_resp)
+        info = RecAPITasks.get_json_data_and_url(RecAPIRoutesRelation.LIST_RULES)
+        RecAPITasks.post_json(locust, info.url, json_info=info.json, assume_tcp_packet_loss=RecAPITasks.assume_tcp_loss,
+                              bin_by_resp=RecAPITasks.bin_by_resp)
 
     def _bind_recording(locust):
-        unbound_info = random.choice(APITasks.bind_recording_data)
-        bind_url = APITasks.bind_recording_url.format(host=APITasks.api_base_host, rec_guid=unbound_info.rec_guid,
-                                                      sched_guid=unbound_info.sched_guid, dvr_host=unbound_info.dvr_host)
-        APITasks.post_json(locust, bind_url, name="Bind URL", post_method="GET")
+        unbound_info = random.choice(RecAPITasks.bind_recording_data)
+        bind_url = RecAPITasks.bind_recording_url.format(host=RecAPITasks.api_base_host, rec_guid=unbound_info.rec_guid,
+                                                         sched_guid=unbound_info.sched_guid, dvr_host=unbound_info.dvr_host)
+        RecAPITasks.post_json(locust, bind_url, name="Bind URL", post_method="GET")
 
     def _nothing(locust):
         assert 2 + 2 == 4
         pass
 
     def _redundant_ts_segment(locust):
-        ts_url, ts_content_hash = random.choice(APITasks.ts_segment_urls)
+        ts_url, ts_content_hash = random.choice(RecAPITasks.ts_segment_urls)
         ts_prefix = ts_url.split("//")[1][0].lower()
         call_name = "{env} - ts request validation".format(env=ts_prefix, url=ts_url)
         with locust.client.get(ts_url, name=call_name, catch_response=True) as response:
@@ -106,49 +106,49 @@ class APITasks(TaskSet):
                     response.success()
 
     def _basic_network(locust):
-        APITasks.post_json(locust, APITasks.basic_network_url, name="Basic Network Test",
-                           assume_tcp_packet_loss=True)
+        RecAPITasks.post_json(locust, RecAPITasks.basic_network_url, name="Basic Network Test",
+                              assume_tcp_packet_loss=True)
 
     def _network_byte_size(locust):
         payload = {
             "byte_size": "3"}  # TODO Make this configurable - ideally by allowing params to be passed in with api_call_weight
-        APITasks.post_json(locust, APITasks.network_byte_size_url, json_info=payload, name="Network Byte Size",
-                           assume_tcp_packet_loss=True)
+        RecAPITasks.post_json(locust, RecAPITasks.network_byte_size_url, json_info=payload, name="Network Byte Size",
+                              assume_tcp_packet_loss=True)
 
     def _small_db(locust):
-        APITasks.post_json(locust, APITasks.small_db_url, name="Small Data Base Query Network Test",
-                           assume_tcp_packet_loss=True)
+        RecAPITasks.post_json(locust, RecAPITasks.small_db_url, name="Small Data Base Query Network Test",
+                              assume_tcp_packet_loss=True)
 
     def _large_db(locust):
-        APITasks.post_json(locust, APITasks.large_db_url, name="Large Data Base Query Network Test",
-                           assume_tcp_packet_loss=True)
+        RecAPITasks.post_json(locust, RecAPITasks.large_db_url, name="Large Data Base Query Network Test",
+                              assume_tcp_packet_loss=True)
 
     def _nginx_check(locust):
-        APITasks.post_json(locust, APITasks.nginx_url, name="Nginx Check", assume_tcp_packet_loss=True)
+        RecAPITasks.post_json(locust, RecAPITasks.nginx_url, name="Nginx Check", assume_tcp_packet_loss=True)
 
     # def _create_delete_rules(locust):
     #    json_data
 
-    _task_method_realtion = APIRoutesRelation(_user_recordings_ribbon,
-                                              _user_franchise_ribbon,
-                                              _user_recspace_information,
-                                              _update_user_settings,
-                                              None,
-                                              _protect_recordings,
-                                              _mark_watched,
-                                              None,
-                                              None,
-                                              None,
-                                              _list_user_rules,
-                                              _bind_recording,
-                                              _update_user_rules,
-                                              _nothing,
-                                              _redundant_ts_segment,
-                                              _basic_network,
-                                              _network_byte_size,
-                                              _small_db,
-                                              _large_db,
-                                              _nginx_check)
+    _task_method_realtion = RecAPIRoutesRelation(_user_recordings_ribbon,
+                                                 _user_franchise_ribbon,
+                                                 _user_recspace_information,
+                                                 _update_user_settings,
+                                                 None,
+                                                 _protect_recordings,
+                                                 _mark_watched,
+                                                 None,
+                                                 None,
+                                                 None,
+                                                 _list_user_rules,
+                                                 _bind_recording,
+                                                 _update_user_rules,
+                                                 _nothing,
+                                                 _redundant_ts_segment,
+                                                 _basic_network,
+                                                 _network_byte_size,
+                                                 _small_db,
+                                                 _large_db,
+                                                 _nginx_check)
 
     BENCHMARK = .25 * SECONDS
     SLOW = .5 * SECONDS
@@ -207,7 +207,7 @@ class APITasks(TaskSet):
                 total_weight = sum([x.weight for x in [get_api_info(x) for x in api_info.values()]])
             except TypeError:
                 total_weight = get_api_info(api_info).weight
-            if api_call not in APITasks._task_method_realtion.keys():
+            if api_call not in RecAPITasks._task_method_realtion.keys():
                 logger.info("{0} is not a valid api call".format(api_call))
 
             if total_weight is 0:
@@ -226,36 +226,36 @@ class APITasks(TaskSet):
         #     logger.debug("Set up {0} Info".format(APIRoutesRelation.REDUNDANT_TS_SEG))
 
         def bind_recording():
-            APITasks.bind_recording_url = "{host}/rec/v1/rec-bind/{dvr_host}/{rec_guid}/{sched_guid}.qvt"
-            APITasks.bind_recording_data = pool_factory.get_unbound_recordings()
-            logger.info("Set up {0} Info".format(APIRoutesRelation.BIND_RECORDING))
+            RecAPITasks.bind_recording_url = "{host}/rec/v1/rec-bind/{dvr_host}/{rec_guid}/{sched_guid}.qvt"
+            RecAPITasks.bind_recording_data = pool_factory.get_unbound_recordings()
+            logger.info("Set up {0} Info".format(RecAPIRoutesRelation.BIND_RECORDING))
 
         def nothing_setup():
             pass
 
         def basic_network_setup():
-            APITasks.basic_network_url = "{host}/rec/test/vip-test/".format(host=APITasks.api_base_host)
-            logger.info("Set up {0} Info".format(APIRoutesRelation.BASIC_NETWORK))
+            RecAPITasks.basic_network_url = "{host}/rec/test/vip-test/".format(host=RecAPITasks.api_base_host)
+            logger.info("Set up {0} Info".format(RecAPIRoutesRelation.BASIC_NETWORK))
 
         def network_byte_size_setup():
-            APITasks.network_byte_size_url = "{host}/rec/test/byte-size-test/".format(host=APITasks.api_base_host)
-            logger.info("Set up {0} Info".format(APIRoutesRelation.NETWORK_BYTE_SIZE))
+            RecAPITasks.network_byte_size_url = "{host}/rec/test/byte-size-test/".format(host=RecAPITasks.api_base_host)
+            logger.info("Set up {0} Info".format(RecAPIRoutesRelation.NETWORK_BYTE_SIZE))
 
         def small_data_base_setup():
-            APITasks.small_db_url = "{host}/rec/test/small-db-test/".format(host=APITasks.api_base_host)
-            logger.info("Set up {0} Info".format(APIRoutesRelation.SMALL_DB))
+            RecAPITasks.small_db_url = "{host}/rec/test/small-db-test/".format(host=RecAPITasks.api_base_host)
+            logger.info("Set up {0} Info".format(RecAPIRoutesRelation.SMALL_DB))
 
         def large_data_base_setup():
-            APITasks.large_db_url = "{host}/rec/test/big-db-test/".format(host=APITasks.api_base_host)
-            logger.info("Set up {0} Info".format(APIRoutesRelation.LARGE_DB))
+            RecAPITasks.large_db_url = "{host}/rec/test/big-db-test/".format(host=RecAPITasks.api_base_host)
+            logger.info("Set up {0} Info".format(RecAPIRoutesRelation.LARGE_DB))
 
         def nginx_check_setup():
-            APITasks.nginx_url = "{host}/srv-ok".format(host=APITasks.api_base_host)
+            RecAPITasks.nginx_url = "{host}/srv-ok".format(host=RecAPITasks.api_base_host)
 
-        setup_relation = APIRoutesRelation(None, None, None, None, None, None, None, None, None, None, None,
-                                           bind_recording, None, nothing_setup, None, basic_network_setup,
-                                           network_byte_size_setup, small_data_base_setup, large_data_base_setup,
-                                           nginx_check_setup)
+        setup_relation = RecAPIRoutesRelation(None, None, None, None, None, None, None, None, None, None, None,
+                                              bind_recording, None, nothing_setup, None, basic_network_setup,
+                                              network_byte_size_setup, small_data_base_setup, large_data_base_setup,
+                                              nginx_check_setup)
         return setup_relation
 
     @staticmethod
@@ -271,11 +271,11 @@ class APITasks(TaskSet):
         header = {"Connection": "close"}
         if json_info:
             header.setdefault("Content-Type", "application/json")
-        call_name = APITasks.__get_labeled_name(url) if name is None else APITasks.__get_labeled_name(name)
+        call_name = RecAPITasks.__get_labeled_name(url) if name is None else RecAPITasks.__get_labeled_name(name)
         if bin_by_resp:
-            APITasks._bin_by_response_time_in_name(locust, url, call_name, header, json_info, post_method)
+            RecAPITasks._bin_by_response_time_in_name(locust, url, call_name, header, json_info, post_method)
         elif assume_tcp_packet_loss:
-            APITasks._assume_tcp_loss_in_name(locust, url, call_name, header, json_info, post_method)
+            RecAPITasks._assume_tcp_loss_in_name(locust, url, call_name, header, json_info, post_method)
         else:
             if json_info:
                 locust.client.request(post_method, url, name=call_name, data=json.dumps(json_info), headers=header)
@@ -336,13 +336,13 @@ class APITasks(TaskSet):
 
     @staticmethod
     def __get_labeled_name(name):
-        call_name = "{env}:{node}  -  {route}".format(env=APITasks.env, node=APITasks.node, route=name)
+        call_name = "{env}:{node}  -  {route}".format(env=RecAPITasks.env, node=RecAPITasks.node, route=name)
         return call_name
 
     @staticmethod
     def get_json_data_and_url(route):
 
-        data_n_func = APITasks.ROUTE_DATA[route]
+        data_n_func = RecAPITasks.ROUTE_DATA[route]
         get_version_func = data_n_func.func
         data = data_n_func.data
         version = get_version_func()
@@ -357,4 +357,4 @@ class APIUser(HttpLocust):
     Locust user class that does requests to the Performance_Test web server running on localhost
     """
 
-    task_set = APITasks
+    task_set = RecAPITasks

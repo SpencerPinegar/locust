@@ -33,7 +33,33 @@ class RouteRelationBase(object):
     def execute_related(self, route, *args):
         return self[route](*args)
 
-class APIRoutesRelation(RouteRelationBase):
+
+class MetaDataRelation(RouteRelationBase):
+    GET_ASSET_JSON = "Get Asset Json"
+    GET_ASSET_JPEG = "Get Asset Jpeg"
+    LOAD_ASSET     = "Load Asset"
+    GET_AIRING     = "Get Airing"
+    LOAD_AIRING    = "Load Airing"
+
+    @classmethod
+    def empty_relation(cls):
+        return MetaDataRelation(None, None, None, None, None)
+
+    @property
+    def relation(self):
+        return self._metadata_relation
+
+    def __init__(self, get_asset_json, get_asset_jpeg, load_asset, get_airing, load_airing):
+        relation = {
+            MetaDataRelation.GET_ASSET_JSON: get_asset_json,
+            MetaDataRelation.GET_ASSET_JPEG: get_asset_jpeg,
+            MetaDataRelation.LOAD_ASSET:     load_asset,
+            MetaDataRelation.GET_AIRING:     get_airing,
+            MetaDataRelation.LOAD_AIRING:    load_airing,
+        }
+        self._metadata_relation = relation
+
+class RecAPIRoutesRelation(RouteRelationBase):
     USER_RECORDING_RIBBON = "User Recordings Ribbon"
     USER_FRANCHISE_RIBBON = "User Franchise Ribbon"
     USER_RECSPACE_INFO    = "User Recspace Information"
@@ -59,39 +85,39 @@ class APIRoutesRelation(RouteRelationBase):
 
     @classmethod
     def empty_relation(cls):
-        return APIRoutesRelation(None, None, None, None, None, None, None, None, None, None, None, None,
-                                 None, None, None, None, None, None, None, None)
+        return RecAPIRoutesRelation(None, None, None, None, None, None, None, None, None, None, None, None,
+                                    None, None, None, None, None, None, None, None)
 
     @property
     def relation(self):
-        return self._api_relation
+        return self._recapi_relation
 
     def __init__(self, user_rec_ribbon, user_franchise_ribbon, user_recspace_info, update_user_settings, create_recording,
                  protect_recordings, mark_watched, delete_recordings, create_rules, delete_rules, list_rules, bind_rec,
                  update_rules, nothing, redudnant_ts, basic_networ, network_byte_size, small_db, large_db, nginx_check):
         relation = {
-            APIRoutesRelation.USER_RECORDING_RIBBON: user_rec_ribbon,
-            APIRoutesRelation.USER_FRANCHISE_RIBBON: user_franchise_ribbon,
-            APIRoutesRelation.USER_RECSPACE_INFO: user_recspace_info,
-            APIRoutesRelation.UPDATE_USER_SETTINGS: update_user_settings,
-            APIRoutesRelation.CREATE_RECORDINGS: create_recording,
-            APIRoutesRelation.PROTECT_RECORDINGS: protect_recordings,
-            APIRoutesRelation.MARK_WATCHED: mark_watched,
-            APIRoutesRelation.DELETE_RECORDINGS: delete_recordings,
-            APIRoutesRelation.CREATE_RULES: create_rules,
-            APIRoutesRelation.UPDATE_RULES: update_rules,
-            APIRoutesRelation.DELETE_RULES: delete_rules,
-            APIRoutesRelation.LIST_RULES: list_rules,
-            APIRoutesRelation.BIND_RECORDING: bind_rec,
-            APIRoutesRelation.NOTHING: nothing,
-            APIRoutesRelation.REDUNDANT_TS_SEG: redudnant_ts,
-            APIRoutesRelation.BASIC_NETWORK: basic_networ,
-            APIRoutesRelation.NETWORK_BYTE_SIZE: network_byte_size,
-            APIRoutesRelation.SMALL_DB: small_db,
-            APIRoutesRelation.LARGE_DB: large_db,
-            APIRoutesRelation.NGINX_CHECK: nginx_check
+            RecAPIRoutesRelation.USER_RECORDING_RIBBON: user_rec_ribbon,
+            RecAPIRoutesRelation.USER_FRANCHISE_RIBBON: user_franchise_ribbon,
+            RecAPIRoutesRelation.USER_RECSPACE_INFO: user_recspace_info,
+            RecAPIRoutesRelation.UPDATE_USER_SETTINGS: update_user_settings,
+            RecAPIRoutesRelation.CREATE_RECORDINGS: create_recording,
+            RecAPIRoutesRelation.PROTECT_RECORDINGS: protect_recordings,
+            RecAPIRoutesRelation.MARK_WATCHED: mark_watched,
+            RecAPIRoutesRelation.DELETE_RECORDINGS: delete_recordings,
+            RecAPIRoutesRelation.CREATE_RULES: create_rules,
+            RecAPIRoutesRelation.UPDATE_RULES: update_rules,
+            RecAPIRoutesRelation.DELETE_RULES: delete_rules,
+            RecAPIRoutesRelation.LIST_RULES: list_rules,
+            RecAPIRoutesRelation.BIND_RECORDING: bind_rec,
+            RecAPIRoutesRelation.NOTHING: nothing,
+            RecAPIRoutesRelation.REDUNDANT_TS_SEG: redudnant_ts,
+            RecAPIRoutesRelation.BASIC_NETWORK: basic_networ,
+            RecAPIRoutesRelation.NETWORK_BYTE_SIZE: network_byte_size,
+            RecAPIRoutesRelation.SMALL_DB: small_db,
+            RecAPIRoutesRelation.LARGE_DB: large_db,
+            RecAPIRoutesRelation.NGINX_CHECK: nginx_check
         }
-        self._api_relation = relation
+        self._recapi_relation = relation
 
 
 
@@ -119,12 +145,13 @@ class PlaybackRoutesRelation(RouteRelationBase):
                     }
         self._playback_relation = relation
 
-class RoutesRelation(APIRoutesRelation, PlaybackRoutesRelation):
+class RoutesRelation(MetaDataRelation, RecAPIRoutesRelation, PlaybackRoutesRelation):
 
     @classmethod
     def empty_relation(cls):
         return RoutesRelation(None, None, None, None, None, None, None, None, None, None, None, None,
-                                 None, None, None, None, None, None, None, None, None, None)
+                                 None, None, None, None, None, None, None, None, None, None,
+                              None, None, None, None, None)
 
     @property
     def relation(self):
@@ -133,13 +160,15 @@ class RoutesRelation(APIRoutesRelation, PlaybackRoutesRelation):
     def __init__(self, user_rec_ribbon, user_franchise_ribbon, user_recspace_info, update_user_settings, protect_recordings,
                  create_recording, mark_watched, delete_recordings, delete_rules, create_rules, list_rules, bind_rec,
                  update_rules, nothing,
-                 redudnant_ts, basic_networ, network_byte_size, small_db, large_db, nginx_check, playback, top_n_playback):
+                 redudnant_ts, basic_networ, network_byte_size, small_db, large_db, nginx_check, playback, top_n_playback,
+                 get_asset_json, get_asset_jpeg, load_asset, get_airing, load_airing):
 
-        APIRoutesRelation.__init__(self, user_rec_ribbon, user_franchise_ribbon, user_recspace_info, update_user_settings, create_recording,
-                 protect_recordings, mark_watched, delete_recordings, create_rules, delete_rules, list_rules, bind_rec, update_rules,
-                 nothing, redudnant_ts, basic_networ, network_byte_size, small_db, large_db, nginx_check)
+        RecAPIRoutesRelation.__init__(self, user_rec_ribbon, user_franchise_ribbon, user_recspace_info, update_user_settings, create_recording,
+                                      protect_recordings, mark_watched, delete_recordings, create_rules, delete_rules, list_rules, bind_rec, update_rules,
+                                      nothing, redudnant_ts, basic_networ, network_byte_size, small_db, large_db, nginx_check)
 
         PlaybackRoutesRelation.__init__(self, playback, top_n_playback)
-        self._relation = merge_dicts(self._playback_relation, self._api_relation)
 
-
+        MetaDataRelation.__init__(self, get_asset_json, get_asset_jpeg, load_asset, get_airing, load_airing)
+        playback_and_recapi = merge_dicts(self._playback_relation, self._recapi_relation)
+        self._relation = merge_dicts(playback_and_recapi, self._metadata_relation)

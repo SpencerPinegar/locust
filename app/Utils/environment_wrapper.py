@@ -9,7 +9,7 @@ class EnvironmentWrapper:
     WRAP_INFO_KEY = "WRAP_OPTIONS"
 
     def __init__(self, env, options, update):
-        os.environ.setdefault('OBJC_DISABLE_INITIALIZE_FORK_SAFETY', 'YES')
+        os.environ.setdefault('OBJC_DISABLE_INITIALIZE_FORK_SAFETY', 'YES') #mac makes somethings not work
         os.environ['no_proxy'] = '127.0.0.1,localhost,0.0.0.0'
 
         self.__env = env
@@ -117,54 +117,105 @@ class DistributedLocustEnvironmetWrapper(EnvironmentWrapper):
         EnvironmentWrapper.__init__(self, os.environ.copy(), options, update)
         self.get_env()
 
-class APIEnvironmentWrapper(DistributedLocustEnvironmetWrapper):
+
+class APIServiceEnvironmentWrapper(DistributedLocustEnvironmetWrapper):
+
     API_INFO_KEY = "API_INFO"
     NODE_KEY = "NODE"
     ENV_KEY = "ENV"
+    API_SERVICE_NAME_KEY = "API_SERVICE"
+
+    @property
+    def api_service_name(self):
+        return self[APIServiceEnvironmentWrapper.API_SERVICE_NAME_KEY]
+
+    @property
+    def api_info(self):
+        return self[APIServiceEnvironmentWrapper.API_INFO_KEY]
+
+    @property
+    def node(self):
+        return self[APIServiceEnvironmentWrapper.NODE_KEY]
+
+    @property
+    def env(self):
+        return self[APIServiceEnvironmentWrapper.ENV_KEY]
+
+
+
+
+    def __init__(self, api_service_name, api_info, node, env, stat_int, computer_index, loc_slave_index,
+                 max_comp_index, max_loc_slave_index, size, update=True, **kwargs):
+
+        options = {
+            APIServiceEnvironmentWrapper.API_SERVICE_NAME_KEY: api_service_name,
+            APIServiceEnvironmentWrapper.API_INFO_KEY: api_info,
+            APIServiceEnvironmentWrapper.ENV_KEY: env,
+            APIServiceEnvironmentWrapper.NODE_KEY: node,
+        }
+
+
+        for key, item in kwargs.items():
+            options[key] = item
+        DistributedLocustEnvironmetWrapper.__init__(self, stat_int, computer_index, loc_slave_index,
+                                                    max_comp_index, max_loc_slave_index, size, update, **options)
+
+
+class MetaDataEnvironmentWrapper(APIServiceEnvironmentWrapper):
+    PUT_SIZE_KEY = "PUT_SIZE"
+
+    @classmethod
+    def load_env(cls):
+        return MetaDataEnvironmentWrapper(None, None, None, None, None, None, None, None, None, None, False)
+
+    @property
+    def put_size(self):
+        return self[MetaDataEnvironmentWrapper.PUT_SIZE_KEY]
+
+    def __init__(self, action, node, env, put_size, stat_int, comp_idx, slave_idx, max_comp_idx,
+                 max_slave_idx, size, update=True):
+        options = {
+                MetaDataEnvironmentWrapper.PUT_SIZE_KEY: put_size,
+        }
+        APIServiceEnvironmentWrapper.__init__(self, "metadata", action, node, env, stat_int, comp_idx, slave_idx,
+                                              max_comp_idx, max_slave_idx, size, update, **options)
+
+
+class RecAPIEnvironmentWrapper(APIServiceEnvironmentWrapper):
+
     MAX_RPS_KEY = "MAX_RPS"
     ASSUME_TCP_KEY = "ASSUME_TCP"
     BIN_RSP_TIME_KEY = "BIN_BY_RESP_TIME"
 
+
     @classmethod
     def load_env(cls):
-        return APIEnvironmentWrapper(None, None, None, None, None, None, None, None, None, None, None, None, False)
-
-    @property
-    def api_info(self):
-        return self[APIEnvironmentWrapper.API_INFO_KEY]
-
-    @property
-    def node(self):
-        return self[APIEnvironmentWrapper.NODE_KEY]
-
-    @property
-    def env(self):
-        return self[APIEnvironmentWrapper.ENV_KEY]
+        return RecAPIEnvironmentWrapper(None, None, None, None, None, None, None, None, None, None, None, None, False)
 
     @property
     def max_rps(self):
-        return self[APIEnvironmentWrapper.MAX_RPS_KEY]
+        return self[RecAPIEnvironmentWrapper.MAX_RPS_KEY]
 
     @property
     def assume_tcp(self):
-        return self[APIEnvironmentWrapper.ASSUME_TCP_KEY]
+        return self[RecAPIEnvironmentWrapper.ASSUME_TCP_KEY]
 
     @property
     def bin_by_resp_time(self):
-        return self[APIEnvironmentWrapper.BIN_RSP_TIME_KEY]
+        return self[RecAPIEnvironmentWrapper.BIN_RSP_TIME_KEY]
+
+
 
     def __init__(self, api_info, node, env, max_rps, assume_tcp, bin_by_resp,
                  stat_int, computer_index, loc_slave_index, max_comp_index, max_loc_slave_index, size, update=True):
         options = {
-           APIEnvironmentWrapper.API_INFO_KEY: api_info,
-           APIEnvironmentWrapper.NODE_KEY: node,
-           APIEnvironmentWrapper.ENV_KEY: env,
-           APIEnvironmentWrapper.MAX_RPS_KEY: max_rps,
-           APIEnvironmentWrapper.ASSUME_TCP_KEY: assume_tcp,
-           APIEnvironmentWrapper.BIN_RSP_TIME_KEY: bin_by_resp
+           RecAPIEnvironmentWrapper.MAX_RPS_KEY: max_rps,
+           RecAPIEnvironmentWrapper.ASSUME_TCP_KEY: assume_tcp,
+           RecAPIEnvironmentWrapper.BIN_RSP_TIME_KEY: bin_by_resp
         }
-        DistributedLocustEnvironmetWrapper.__init__(self, stat_int, computer_index, loc_slave_index,
-                                                    max_comp_index, max_loc_slave_index, size, update, **options)
+        APIServiceEnvironmentWrapper.__init__(self, "recapi", api_info, node, env, stat_int, computer_index,
+                                              loc_slave_index, max_comp_index, max_loc_slave_index, size, update,
+                                              **options)
 
 
 class PlaybackEnvironmentWrapper(DistributedLocustEnvironmetWrapper):

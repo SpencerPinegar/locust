@@ -5,14 +5,15 @@ import backoff
 import os
 from requests.exceptions import ConnectionError
 import json
-from multiprocessing import Process
 import requests
 from app.main import run_app
 from app.Utils.utils import build_api_info
 from app.Data.config import Config
-import threading
+import subprocess32 as sp
 
 class TestAPIApp(TestCase):
+
+
 
     def setUp(self):
         self.config = Config()
@@ -27,7 +28,11 @@ class TestAPIApp(TestCase):
         self.hatch_rate = 120
         self.setup_name = "VIP User Recordings"
         self.procedure_name = "VIP Benchmark"
+        self.app = sp.Popen(["python", "/Users/spencerpinegar/PycharmProjects/Performance_Test/app/main.py"])
 
+
+    def tearDown(self):
+        self._stop_and_shutdown()
 
 
 
@@ -149,7 +154,9 @@ class TestAPIApp(TestCase):
         call_id, respone = self.__remote_api_call("startCustomAPITest", expected_params)
         self.__assert_success(respone, call_id, True)
 
-
+    def _stop_and_shutdown(self):
+        call_id, response = self.__remote_api_call("stopTest", {})
+        call_id, response = self.__remote_api_call("shutdown", {})
 
     def _assert_is_running(self):
         call_id, response = self.__remote_api_call("isRunning", {})

@@ -1,9 +1,9 @@
 import os
 import sys
-import json
+import shlex
 import logging
 
-from app.Utils.environment_wrapper import APIEnvironmentWrapper as APIWrap
+from app.Utils.environment_wrapper import RecAPIEnvironmentWrapper as APIWrap
 
 
 def run_locust(options):
@@ -107,3 +107,43 @@ def run_locust(options):
         shutdown(code=code)
     except KeyboardInterrupt as e:
         shutdown(0)
+
+
+
+def create_master_options(name_space_options):
+    locust_path = "locust"  # self.__get_locust_file_dir()
+
+    master_arg_string = "{locust} -f {master_file} -H {l_host} --master --master-bind-host={mb_host} --master-bind-port={mb_port}".format(
+        locust=locust_path, master_file=name_space_options.locustfile, l_host=name_space_options.host,
+        mb_host=name_space_options.master_bind_host, mb_port=name_space_options.master_bind_port
+    )
+    if name_space_options.csvfilebase:
+        master_arg_string = "{master_arg_string} --csv={file_name}".format(master_arg_string=master_arg_string,
+                                                                           file_name=name_space_options.csvfilebase)
+    master_arg_string = "{master_arg_string} --loglevel={loglevel}".format(master_arg_string=master_arg_string,
+                                                                               loglevel=name_space_options.loglevel)
+    return shlex.split(master_arg_string)
+
+
+def create_slave_options(name_space_options):
+    locust_path = "locust"  # self.__get_locust_file_dir()
+
+    slave_arg_string = "{locust} -f {slave_file} -H {l_host} --slave --master-host={m_host} --master-port={m_port}".format(
+        locust=locust_path, slave_file=name_space_options.locustfile, l_host=name_space_options.host,
+        m_host=name_space_options.master_host, m_port=name_space_options.master_port
+    )
+    return shlex.split(slave_arg_string)
+
+
+def create_undistributed_options(name_space_options):
+    locust_path = "locust"  # self.__get_locust_file_dir()
+
+    undis_arg_string = "{locust} -f {undis_file} -H {l_host} ".format(
+        locust=locust_path, undis_file=name_space_options.locustfile, l_host=name_space_options.host,
+    )
+    if name_space_options.csvfilebase:
+        undis_arg_string = "{undis_arg_string} --csv={file_name}".format(undis_arg_string=undis_arg_string,
+                                                                         file_name=name_space_options.csvfilebase)
+    undis_arg_string = "{undis_arg_string} --loglevel={loglevel}".format(undis_arg_string=undis_arg_string,
+                                                                         loglevel=name_space_options.loglevel)
+    return shlex.split(undis_arg_string)

@@ -28,7 +28,8 @@ class LocustTest(TestCase):
         self.expected_api_env = {"DEV1", "DEV2", "DEV3", "QA", "BETA", "BETA2"}
         self.config = Config(debug=False)
         self.PoolFactory = RequestPoolFactory(self.config, 0, 0, 0, 0, None, envs={"DEV2"})
-        self.dev2_host = self.config.recapi.get_host("DEV2")
+        self.dev2_recapi_host = self.config.recapi.get_host("DEV2")
+        self.dev2_metadata_host = self.config.metadata.get_host("DEV2")
         self.ran_inner_setup = True
         self.min_requests = 50
         # THESE STATS ARE USED WHEN RUNNING THE LOAD RUNNER
@@ -94,37 +95,56 @@ class LocustTest(TestCase):
 
 
     #TODO change back from running v1, v2, v4, v5
-    def _test_undistributed_api(self, route, max_request, assume_tcp=False, bin_by_resp=False, version = None,
-                                assert_results=True):
+    def _test_undistributed_recapi(self, route, max_request, assume_tcp=False, bin_by_resp=False, version = None,
+                                   assert_results=True):
         try:
             lb, ub = self.config.recapi.get_route_normal_min_max(route)
         except KeyError:
             lb, ub = 10, 10
         versions = self.config.recapi.get_route_versions(route)
-        api_call_route_info = self.__get_default_api_route_info(route, version)
+        api_call_route_info = self.__get_default_recapi_route_info(route, version)
         # versions= [1]
         # route_api_call_weight = {}
         # for version in versions:
         #     route_api_call_weight.setdefault(int(version), build_api_info(self.weight, self.size, lb, ub))
         # api_call_route_info = {route: route_api_call_weight}
-        self.__run_api_locust(api_call_route_info, max_request, assume_tcp, bin_by_resp, False)
+        self.__run_recapi_locust(api_call_route_info, max_request, assume_tcp, bin_by_resp, False)
         if assert_results:
             self.__assert_successful_locust_run()
 
-    def _test_multi_core_undistributed_api_custom(self, api_route_info, max_request, assume_tcp=False,
-                                                  bin_by_resp=False):
+    def _test_multi_core_undistributed_recapi_custom(self, api_route_info, max_request, assume_tcp=False,
+                                                     bin_by_resp=False):
         self.__force_multi_core()
-        self.__run_api_locust(api_route_info, max_request, assume_tcp, bin_by_resp, False)
+        self.__run_recapi_locust(api_route_info, max_request, assume_tcp, bin_by_resp, False)
 
-    def _test_multi_core_undistributed_api(self, route, max_request, assume_tcp=False, bin_by_resp=False, version=None,
-                                           assert_results=True):
+
+
+    def _test_multi_core_undistributed_recapi(self, route, max_request, assume_tcp=False, bin_by_resp=False, version=None,
+                                              assert_results=True):
         self.__force_multi_core()
-        api_call_route_info = self.__get_default_api_route_info(route, version)
-        self.__run_api_locust(api_call_route_info, max_request,assume_tcp, bin_by_resp, True)
+        api_call_route_info = self.__get_default_recapi_route_info(route, version)
+        self.__run_recapi_locust(api_call_route_info, max_request, assume_tcp, bin_by_resp, True)
         if assert_results:
             self.__assert_successful_locust_run()
 
-    def _test_multi_core_distributed_api(self, route, max_request, version=None, assert_results=True, kill_at_end=True):
+    def _test_multi_core_distributed_recapi(self, route, max_request, version=None, assert_results=True, kill_at_end=True):
+        pass
+
+
+    def _test_undistributed_metadata(self, action, put_size, assert_results=True):
+        metadata_options = self.__get_default_metdata_options(action, put_size)
+        self.__run_metadata_locust(metadata_options, False)
+        if assert_results:
+            self.__assert_successful_locust_run()
+
+    def _test_multi_core_undistributed_metadata(self, action, put_size, assert_results=True):
+        self.__force_multi_core()
+        metadata_options = self.__get_default_metdata_options(action, put_size)
+        self.__run_metadata_locust(metadata_options, True)
+        if assert_results:
+            self.__assert_successful_locust_run()
+
+    def _test_multi_core_distributed_metadata(self, action, put_size):
         pass
 
     def _is_multi_core_capable(self):
@@ -166,9 +186,11 @@ class LocustTest(TestCase):
 
 
 
+    def __get_default_metdata_options(self, action, put_size):
+        return self.load_runner._get_metadata_options(action, put_size, self.env, self.node, self.stat_int)
 
 
-    def __get_default_api_route_info(self, route, version):
+    def __get_default_recapi_route_info(self, route, version):
         versions = self.config.recapi.get_route_versions(route) if version is None else [version]
         route_api_call_weight = {}
         try:
@@ -201,10 +223,10 @@ class LocustTest(TestCase):
         else:
             self.load_runner.default_2_cores = True
 
-    def __run_api_locust(self, api_info, max_request, assume_tcp, bin_by_resp, multicore):
+    def __run_recapi_locust(self, api_info, max_request, assume_tcp, bin_by_resp, multicore):
         n_clients = 300 if max_request else self.n_clients
-        options = self.load_runner._get_api_options(api_info, self.env, self.node, max_request,
-                                                        self.config.stat_reporting_interval, assume_tcp, bin_by_resp)
+        options = self.load_runner._get_recapi_options(api_info, self.env, self.node, max_request,
+                                                       self.config.stat_reporting_interval, assume_tcp, bin_by_resp)
         if multicore:
             self.load_runner._run_multi_core(options, locust_file_paths.web_host,
                                              locust_file_paths.api, stats_file_name="test",
@@ -213,10 +235,20 @@ class LocustTest(TestCase):
         else:
             self.load_runner._run_single_core(options, locust_file_paths.api,
                                               stats_file_name="test", stats_folder=LocustTest.test_stats_folder)
-        self.load_runner.web_client.start_ramp_up(1, self.hatch_rate, True)
+        self.load_runner.web_client.start_ramp_up(30, self.hatch_rate, True)
         time.sleep(10)
 
 
+    def __run_metadata_locust(self, options, multicore):
+        if multicore:
+            self.load_runner._run_multi_core(options, locust_file_paths.web_host, locust_file_paths.metadata,
+                                             stats_file_name="test", stats_folder=LocustTest.test_stats_folder)
+            self.assertEqual(True, self.load_runner.slaves_loaded, "not all the slaves loaded correctly")
+        else:
+            self.load_runner._run_single_core(options, locust_file_paths.metadata, stats_file_name="test",
+                                              stats_folder=LocustTest.test_stats_folder)
+        self.load_runner.web_client.start_ramp_up(30, 1, True)
+        time.sleep(10)
 
 
 

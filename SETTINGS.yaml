@@ -4,20 +4,9 @@
 #TODO: Allow this information to be updated based on a simple webscrape of the above URL
 Setups:
 
-  Node User Recordings:
-   api call:
-    User Recordings Ribbon:
-     1:
-      norm_lower: 30
-      norm_upper: 50
-      optional_fields: {}
-      weight: 1
-      size: 50
-   env: DEV2
-   node: 1
-   version: 1
-   min: 45
-   max: 50
+#### VIP SETUPS  ####
+
+
 
   VIP User Recordings:
     api call:
@@ -33,6 +22,38 @@ Setups:
     version: 1
     min: 45
     max: 50
+
+  VIP User Franchise:
+    api call:
+      User Recordings Ribbon:
+        1:
+          norm_lower: 30
+          norm_upper: 50
+          optional_fields: {}
+          weight: 1
+          size: 50
+    env: DEV2
+    node: 1
+    version: 1
+    min: 45
+    max: 50
+
+
+##### NODE SETUPS ###
+  Node User Recordings:
+   api call:
+    User Recordings Ribbon:
+     1:
+      norm_lower: 30
+      norm_upper: 50
+      optional_fields: {}
+      weight: 1
+      size: 50
+   env: DEV2
+   node: 1
+   version: 1
+   min: 45
+   max: 50
 
   Node Network:
     api call:
@@ -222,7 +243,7 @@ Procedures:
 
 LoadRunner Settings:
   RPC Settings:
-    port: 80
+    port: 49636
     endpoint: /LoadServer
 
   Locust UI Settings:
@@ -233,12 +254,11 @@ LoadRunner Settings:
     port: 5557
     SLA Response Time Cutoff ms: 150
     To Failure Max Consecutive Frames Failed: 3
-    To Failure Test Prefix: "To Failure"
+    To Failure Test Prefix: "To_Failure"
     stat reporting interval: 2
 
   Servers:
     Potential Servers:
-      - "0.0.0.0"
       - b-gp2-lgen-8.imovetv.com
       - b-gp2-lgen-9.imovetv.com
 
@@ -298,11 +318,11 @@ MetaData:
       Total Nodes: 3
 
 
-  API Prefix: /mds/v{version}/{suf}/
+  API Prefix: /mds/v{version}/{suf}
   Routes:
 
     Get Asset Json:
-      Route: asset/{0}.json
+      Route: asset/{sched_guid}.json
       Versions: [1]
       Normal Min: null
       Normal Max: null
@@ -312,7 +332,7 @@ MetaData:
         Optional Fields: null
 
     Get Asset Jpeg:
-      Route: asset/{0}.jpg
+      Route: asset/{sched_guid}.jpg
       Versions: [1]
       Normal Min: null
       Normal Max: null
@@ -324,12 +344,12 @@ MetaData:
     Load Asset:
       Route: asset
       Versions: [1]
-      Normal Min: 30
-      Normal Max: 50
+      Normal Min: 1
+      Normal Max: 20
       List: false
       Version 1:
         Required Fields:
-          user: {arg1: guid, pos: 0}
+          schedule: {arg1: schedule_guid, pos: 0}
         Optional Fields: null
 
     Get Airing:
@@ -367,7 +387,8 @@ MetaData:
           lsdvr: guid
           protected: bool
 
-  Extra Host Routes:
+  Extra Routes:
+    -
 
 
 
@@ -647,7 +668,7 @@ RecAPI:
         Optional Fields: null
 
 
-  Extra Host Routes:
+  Extra Routes:
     - Nothing
     - Redundant Ts Segment
     - Basic Network

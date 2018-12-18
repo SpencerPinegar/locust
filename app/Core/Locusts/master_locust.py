@@ -5,7 +5,9 @@ logging.basicConfig(level=logging.DEBUG,
                     datefmt='%a, %d %b %Y %H:%M:%S')
 logger = logging.getLogger(__name__)
 logger.info("IMPORTED WEB UI SUCCESFULLY")
-logging.disable(logging.CRITICAL)
+
+
+#logging.disable(logging.CRITICAL)
 
 class EmptyTaskSet(TaskSet):
     pass

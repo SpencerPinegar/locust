@@ -157,7 +157,23 @@ SQL_ROUTES_STATEMENTS = {
                             AND r.actual_end >= now() - INTERVAL '1 day'
                             AND u.description = 'Test All Recordings User'
                             ORDER BY a.id
-    """
+    """,
+    "Load Asset": """
+                            SELECT ca.{arg1}
+                            FROM content_asset ca
+                            WHERE ca.start >= now() AND
+                            ca.dead = FALSE
+                            ORDER BY ca.start
+    
+    """,
+    "Unscheduled Schedule GUIDS": """
+                             SELECT ca.schedule_guid
+                             FROM content_asset ca
+                             WHERE ca.start >=  now() AND
+                             ca.dead = FALSE
+                             ORDER BY ca.start
+    """,
+
 
 
 }
@@ -203,6 +219,7 @@ TEST_SQL_STATEMENTS = {
                                 GROUP BY fr.user_id
                                 HAVING count(fr.*) > 0)
         """
+
 }
 
 

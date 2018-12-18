@@ -2,7 +2,7 @@ import os
 import yaml
 from unittest import TestCase
 
-from app.Utils.environment_wrapper import (EnvironmentWrapper as EnvWrap, APIEnvironmentWrapper as APIWrap,
+from app.Utils.environment_wrapper import (EnvironmentWrapper as EnvWrap, RecAPIEnvironmentWrapper as APIWrap,
                                            PlaybackEnvironmentWrapper as PlaybackWrap,
                                            DistributedLocustEnvironmetWrapper as LocWrap)
 

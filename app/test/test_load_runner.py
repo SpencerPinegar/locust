@@ -1,7 +1,7 @@
 import math
 import time
 
-from app.Utils.route_relations import APIRoutesRelation as APIRel, PlaybackRoutesRelation as PlaybackRel
+from app.Utils.route_relations import RecAPIRoutesRelation as APIRel, PlaybackRoutesRelation as PlaybackRel
 from app.Utils.locust_test import LocustTest
 from app.Core.exceptions import TestAlreadyRunning
 
@@ -11,6 +11,7 @@ class TestLoadRunnerAPI(LocustTest):
     def setUp(self):
         super(TestLoadRunnerAPI, self).setUp()
         self.load_runner.default_2_cores = True
+        #self.load_runner.debug = True
 
 
     def tearDown(self):
@@ -95,7 +96,7 @@ class TestLoadRunnerAPI(LocustTest):
     def _setup_and_start_custom_api_test(self, api_call=None, max_request=False):
         if api_call is None:
             api_call = self.api_call
-        self.load_runner.custom_api_test(api_call, self.env, self.node, max_request, 2)
+        self.load_runner.custom_recapi_test(api_call, self.env, self.node, max_request, 2)
         self.load_runner.start_ramp_up(self.n_clients, self.hatch_rate)
         time.sleep(5)
 
@@ -150,22 +151,22 @@ class TestLoadRunnerUnderTheHood(LocustTest):
     """
 
     def test_run_single_core_api(self):
-        self._test_undistributed_api(APIRel.USER_RECORDING_RIBBON, False)
+        self._test_undistributed_recapi(APIRel.USER_RECORDING_RIBBON, False)
 
     def test_run_multi_core_api(self):
-        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, False)
+        self._test_multi_core_undistributed_recapi(APIRel.USER_RECORDING_RIBBON, False)
 
     def test_run_single_core_api_max_request(self):
-        self._test_undistributed_api(APIRel.USER_RECORDING_RIBBON, True)
+        self._test_undistributed_recapi(APIRel.USER_RECORDING_RIBBON, True)
 
     def test_run_multi_core_api_max_request(self):
-        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, True)
+        self._test_multi_core_undistributed_recapi(APIRel.USER_RECORDING_RIBBON, True)
 
     def test_run_multi_core_api_assume_tcp(self):
-        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, False, True)
+        self._test_multi_core_undistributed_recapi(APIRel.USER_RECORDING_RIBBON, False, True)
 
     def test_run_multi_core_api_bin_by_resp(self):
-        self._test_multi_core_undistributed_api(APIRel.USER_RECORDING_RIBBON, False, False, True)
+        self._test_multi_core_undistributed_recapi(APIRel.USER_RECORDING_RIBBON, False, False, True)
 
     def test_run_single_core_playback(self):
         self._test_undistributed_playback(PlaybackRel.Top_N_Playback, "HLS", 0)
@@ -222,6 +223,9 @@ class TestLoadRunnerUnderTheHood(LocustTest):
         self._assert_adjust_test(user_2, hatchrate_2)
         self._assert_adjust_test(user_3, hatchrate_3)
 
+    def test_distributed(self):
+        self.load_runner._run_distributed(None, None, None)
+
 
 
 ########################################################################################################################
@@ -230,7 +234,7 @@ class TestLoadRunnerUnderTheHood(LocustTest):
 
 
     def _basic_setup(self):
-        self._test_undistributed_api("User Recordings Ribbon", False)
+        self._test_undistributed_recapi("User Recordings Ribbon", False)
 
     def _assert_adjust_test(self, users, hatchrate):
         self.load_runner.start_ramp_up(users, hatchrate)

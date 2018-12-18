@@ -37,7 +37,7 @@ class AutomatedTestCase:
         self.name = "{setup}: {procedure} - {date}".format(setup=setup_name, procedure=procedures_name,
                                                            date=datetime.datetime.now().strftime("%Y-%m-%d %H:%M"))
         self.stat_interval = config.stat_reporting_interval
-        self.setup_test_method = api_test_runner.custom_api_test
+        self.setup_test_method = api_test_runner.custom_recapi_test
         self.teardown_test_method = api_test_runner.stop_tests
         self.get_stats_method = api_test_runner.get_stats
         self.ramp_up_method = api_test_runner.start_ramp_up

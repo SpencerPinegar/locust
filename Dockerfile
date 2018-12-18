@@ -13,4 +13,4 @@ EXPOSE 8089
 
 
 
-
+CMD /bin/bash

@@ -26,6 +26,7 @@ class Config(object):
     MetaData_Name = "MetaData"
     SETTINGS_PATH = os.path.join(MAIN_DIR_PATH, "SETTINGS.yaml")
 
+
     def __init__(self, debug=False):
 
         self.debug = debug
@@ -38,7 +39,7 @@ class Config(object):
 ##################################################################################################
     @property
     def test_routes(self):
-        return self._settings["RecAPI Settings"]["Misc Tests"]
+        return self._settings["RecAPI"]["Extra Routes"]
 
     @property
     def settings(self):
@@ -208,7 +209,7 @@ class APIManager(object):
     Version_Key = "Version {0}"
     RequiredF_Key = "Required Fields"
     OptionalF_Key = "Optional Fields"
-    Extra_Host_Routes_Key = "Extra Host Routes"
+    Extra_Host_Routes_Key = "Extra Routes"
 
     LayOut = {
         "USER DEFINED API SETTING NAME": {

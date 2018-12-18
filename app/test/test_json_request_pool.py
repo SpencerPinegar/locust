@@ -5,7 +5,8 @@ import requests
 import random
 import math
 from app.Utils.utils import execute_select_statement, get_api_info
-from app.Utils.route_relations import (APIRoutesRelation as APIRelation, PlaybackRoutesRelation as PlaybackRelation)
+from app.Utils.route_relations import (RecAPIRoutesRelation as APIRelation, PlaybackRoutesRelation as PlaybackRelation,
+                                       MetaDataRelation as MetaRelation)
 
 RS_Recordings_Key = "rs_recordings"
 Seasons_Key = "seasons"
@@ -177,6 +178,33 @@ class TestReadOnlyRequestPool(TestRequestPool):
             "norm_upper": 7,
             "optional_fields": {},
             "weight": 4
+        }
+    }
+    GET_ASSET_JSON_API_INFO = {
+        1: {
+            "size": 100,
+            "norm_lower": 1,
+            "norm_upper": 1,
+            "optional_fields": {},
+            "weight": 1
+        }
+    }
+    GET_ASSET_JPEG_API_INFO = {
+        1: {
+            "size": 100,
+            "norm_lower": 1,
+            "norm_upper": 1,
+            "optional_fields": {},
+            "weight": 1
+        }
+    }
+    LOAD_ASSET_API_INFO = {
+        1: {
+            "size": 100,
+            "norm_lower": 1,
+            "norm_upper": 20,
+            "optional_fields": {},
+            "weight": 1
         }
     }
 
@@ -420,7 +448,7 @@ class TestReadOnlyRequestPool(TestRequestPool):
         route, api_route = APIRelation.USER_RECORDING_RIBBON, TestReadOnlyRequestPool.USER_RECORDINGS_RIBBON_API_INFO
         version_info = self._get_full_pool(route, api_route, self.env)
         for version, version_params in version_info.items():
-            url = self.dev2_host + version_params.route
+            url = self.dev2_recapi_host + version_params.route
             datapool = version_params.pool
             self.assertFalse(datapool.pool_size is -1, TestReadOnlyRequestPool.Non_Inited_Data_Pool_Mssg)
             # Must initlize to be valid
@@ -444,7 +472,7 @@ class TestReadOnlyRequestPool(TestRequestPool):
         route, api_call = APIRelation.USER_FRANCHISE_RIBBON, TestReadOnlyRequestPool.USER_FRANCHISE_RIBBON_API_INFO
         version_info = self.PoolFactory.get_user_franchise_ribbon_pool_and_route(api_call, "DEV2")
         for version, version_params in version_info.items():
-            url = self.dev2_host + version_params.route
+            url = self.dev2_recapi_host + version_params.route
             datapool = version_params.pool
             self.assertFalse(datapool.pool_size is -1, TestReadOnlyRequestPool.Non_Inited_Data_Pool_Mssg)
             json_post_post = datapool.get_json(filter="recorded")
@@ -466,7 +494,7 @@ class TestReadOnlyRequestPool(TestRequestPool):
         route, api_call = APIRelation.USER_RECSPACE_INFO, TestReadOnlyRequestPool.USER_RECSPACE_INFO_API_INFO
         version_info = self.PoolFactory.get_user_recspace_information_pool_and_route(api_call, "DEV2")
         for version, version_params in version_info.items():
-            url = self.dev2_host + version_params.route
+            url = self.dev2_recapi_host + version_params.route
             datapool = version_params.pool
             self.assertFalse(datapool.pool_size is -1, TestReadOnlyRequestPool.Non_Inited_Data_Pool_Mssg)
             json_post_post = datapool.get_json()
@@ -482,7 +510,7 @@ class TestReadOnlyRequestPool(TestRequestPool):
         route, api_call = APIRelation.MARK_WATCHED, TestReadOnlyRequestPool.MARK_WATCHED_API_INFO
         version_info = self.PoolFactory.get_mark_watched_pool_and_route(api_call, "DEV2")
         for version, version_params in version_info.items():
-            url = self.dev2_host + version_params.route
+            url = self.dev2_recapi_host + version_params.route
             datapool = version_params.pool
             self.assertFalse(datapool.pool_size is -1, TestReadOnlyRequestPool.Non_Inited_Data_Pool_Mssg)
             json_post_post = datapool.get_json()
@@ -498,7 +526,7 @@ class TestReadOnlyRequestPool(TestRequestPool):
         route, api_call = APIRelation.LIST_RULES, TestReadOnlyRequestPool.LIST_RULES_API_INFO
         version_info = self.PoolFactory.get_list_rules_pool_and_route(api_call, "DEV2")
         for version, version_params in version_info.items():
-            url = self.dev2_host + version_params.route
+            url = self.dev2_recapi_host + version_params.route
             datapool = version_params.pool
             self.assertFalse(datapool.pool_size is -1, TestReadOnlyRequestPool.Non_Inited_Data_Pool_Mssg)
 
@@ -515,6 +543,23 @@ class TestReadOnlyRequestPool(TestRequestPool):
         route, api_call = APIRelation.LIST_RULES, TestReadOnlyRequestPool.LIST_RULES_API_INFO
         self.assert_all_subsets_divide_correctly(route, True, api_call, self.env)
 
+
+    def test_get_load_asset(self):
+        route, api_call = MetaRelation.LOAD_ASSET, TestReadOnlyRequestPool.LOAD_ASSET_API_INFO
+        version_info = self.PoolFactory.get_load_asset(api_call, "DEV2")
+        for version, version_params in version_info.items():
+            url = self.dev2_metadata_host + version_params.route
+            datapool = version_params.pool
+            json_post_post = random.choice(datapool)
+            self.assertFalse(len(datapool) is -1,TestReadOnlyRequestPool.Non_Inited_Data_Pool_Mssg)
+            response = requests.put(url, json=json_post_post)
+            self.assertEqual(202, response.status_code, TestReadOnlyRequestPool.Non_200_Post_Mssg)
+
+
+
+
+
+
     def _recording_count(self, recordings):
         rec_count = 0
         for rec in recordings:
@@ -529,6 +574,8 @@ class TestReadOnlyRequestPool(TestRequestPool):
         for season in franchise_seasons:
             resp_len += len(season["episodes"])
         return resp_len
+
+
 
 
 class TestTwoStateRequestPool(TestRequestPool):
@@ -597,9 +644,7 @@ class TestTwoStateRequestPool(TestRequestPool):
                 self.assertEqual(user[1], clean_default)
             pool.close(route)
 
-    def test_update_user_settings_distributed(self):
-        route_name, api_call = APIRelation.UPDATE_USER_SETTINGS, TestTwoStateRequestPool.UPDATE_USER_SETTINGS_API_INFO
-        self.assert_all_subsets_divide_correctly(route_name, True, api_call, self.env)
+
 
     #There are 400 recordings that we can pull from to mark as protected or not
     # def test_protect_recordings_v1(self):
@@ -694,18 +739,14 @@ class TestTwoStateRequestPool(TestRequestPool):
         self.assert_all_subsets_divide_correctly(route_name, True, api_info, self.env)
 
 
+    def test_update_user_settings_distributed(self):
+        route_name, api_call = APIRelation.UPDATE_USER_SETTINGS, TestTwoStateRequestPool.UPDATE_USER_SETTINGS_API_INFO
+        self.assert_all_subsets_divide_correctly(route_name, True, api_call, self.env)
+
+
+
 class TestMiscFunctions(TestRequestPool):
 
-    def test_get_redundant_ts_segment_url(self):
-        route_name, version = (APIRelation.REDUNDANT_TS_SEG, None)
-        redudntant_ts_segments = self.PoolFactory.get_redundant_ts_segment_urls("DEV2", 30)
-        for i in range(5):
-            ts_url, content_hash = random.choice(redudntant_ts_segments)
-            ts_resp = requests.get(ts_url)
-            self.assertEqual(200, ts_resp.status_code, "Could not access ts segment {ts}".format(ts=ts_url))
-            ts_content = ts_resp.content
-            ts_content_hash = hashlib.md5(str(ts_content)).hexdigest()
-            self.assertEqual(content_hash, ts_content_hash, "Incorrect hash {hash}".format(hash=ts_content_hash))
 
     def test_get_playback_recording_single_core(self):
         route_name, version = (PlaybackRelation.Playback, None)
@@ -740,7 +781,19 @@ class TestMiscFunctions(TestRequestPool):
     def test_get_unbound_recordings_distributed(self):
         route_name, api_info = APIRelation.BIND_RECORDING, None
         self.assert_all_subsets_divide_correctly(route_name, False)
-        
+
+
+    def test_get_unscheduled_schedule_guid_pool(self):
+       route_name, api_info = "Unscheduled Schedule GUIDS", None
+       schedule_guids = self.PoolFactory.get_unscheduled_schedule_guid_pool("DEV2")
+       self.assertGreater(len(schedule_guids), 100, "Not enough unschedule schedule guids were recieved")
+
+
+
+
+    #def test_get_uncheduled_schedule_guid_distributed(self):
+    #    route_name, api_info = "Unscheduled Schedule GUIDS", None
+    #    self.assert_all_subsets_divide_correctly(route_name, False)
 # class TestInverseStateRequestPool(LocustTest):
 #
 #     #Edits Made -- TODO:: Create User that can have rules constatnly edited
