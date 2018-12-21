@@ -1,4 +1,0 @@
-"Method","Name","# requests","# failures","Median response time","Average response time","Min response time","Max response time","Average Content Size","Requests/s"
-"POST","0 PASS < 250.0ms: DEV2-VIP--/rec/v4/user-recordings/",2800,0,77,87,61,248,39630,208.26
-"POST","1 SLOW 250.0ms -- 500.0ms: DEV2-VIP--/rec/v4/user-recordings/",64,0,310,312,251,372,39630,4.76
-"None","Total",2864,0,77,92,61,372,39630,213.02

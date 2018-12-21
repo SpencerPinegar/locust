@@ -4,7 +4,7 @@ from app.Utils.route_relations import RecAPIRoutesRelation
 class TestMetaDataUndistributed(LocustTest):
 
     def test_asset_undistributed(self):
-        self._test_undistributed_metadata("Asset", 20)
+        self._test_undistributed_metadata("Asset", 20, 600)
 
     def test_airing_undistributed(self):
         self._test_undistributed_recapi("Airing", 20)
@@ -16,7 +16,7 @@ class TestMetaDataUndistributedDebug(LocustTest):
         self.load_runner.debug = True
 
     def test_asset_undistributed(self):
-        self._test_undistributed_metadata("Asset", 20)
+        self._test_undistributed_metadata("Asset", 20, 600)
 
     def test_airing_undistributed(self):
         self._test_undistributed_metadata("Airing", 20)
@@ -25,11 +25,11 @@ class TestMetaDataUndistributedDebug(LocustTest):
 class TestMetaDataMultiCoreUndistributed(LocustTest):
 
     def test_asset_multi_core_undistributed(self):
-        self._test_multi_core_undistributed_metadata("Asset", 20)
+        self._test_multi_core_undistributed_metadata("Asset", 1, 600)
 
 
     def test_airing_multi_core_undistributed(self):
-        self._test_multi_core_undistributed_metadata("Airing", 20)
+        self._test_multi_core_undistributed_metadata("Airing", 20, 600)
 
 
 class TestMetaDataMultiCoreUndistributedDebug(LocustTest):
@@ -39,7 +39,7 @@ class TestMetaDataMultiCoreUndistributedDebug(LocustTest):
         self.load_runner.debug = True
 
     def test_asset_multi_core_undistributed(self):
-        self._test_multi_core_undistributed_metadata("Asset", 20)
+        self._test_multi_core_undistributed_metadata("Asset", 20, 600)
 
     def test_airing_multi_core_undistributed(self):
-        self._test_multi_core_undistributed_metadata("Airing", 20)
+        self._test_multi_core_undistributed_metadata("Airing", 20, 600)

@@ -131,15 +131,15 @@ class LocustTest(TestCase):
         pass
 
 
-    def _test_undistributed_metadata(self, action, put_size, assert_results=True):
-        metadata_options = self.__get_default_metdata_options(action, put_size)
+    def _test_undistributed_metadata(self, action, put_size, total_assets, assert_results=True):
+        metadata_options = self.__get_default_metdata_options(action, put_size, total_assets)
         self.__run_metadata_locust(metadata_options, False)
         if assert_results:
             self.__assert_successful_locust_run()
 
-    def _test_multi_core_undistributed_metadata(self, action, put_size, assert_results=True):
+    def _test_multi_core_undistributed_metadata(self, action, put_size, total_assets, assert_results=True):
         self.__force_multi_core()
-        metadata_options = self.__get_default_metdata_options(action, put_size)
+        metadata_options = self.__get_default_metdata_options(action, put_size, total_assets)
         self.__run_metadata_locust(metadata_options, True)
         if assert_results:
             self.__assert_successful_locust_run()
@@ -186,8 +186,8 @@ class LocustTest(TestCase):
 
 
 
-    def __get_default_metdata_options(self, action, put_size):
-        return self.load_runner._get_metadata_options(action, put_size, self.env, self.node, self.stat_int)
+    def __get_default_metdata_options(self, action, put_size, total_assets):
+        return self.load_runner._get_metadata_options(action, put_size, self.env, self.node, self.stat_int, total_assets)
 
 
     def __get_default_recapi_route_info(self, route, version):

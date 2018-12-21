@@ -8,9 +8,9 @@ import os
 import yaml #PYYAML
 import psycopg2 #psycopg2
 from app.Data.sql_route_statements import SQL_ROUTES_STATEMENTS
+from app.Utils.utils import get_performance_test_dir
 
-HERE = os.path.abspath(__file__)
-MAIN_DIR_PATH = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
+MAIN_DIR_PATH = get_performance_test_dir()
 
 
 
@@ -181,6 +181,10 @@ class Config(object):
     @property
     def potential_servers(self):
         return self.settings["LoadRunner Settings"]["Servers"]["Potential Servers"]
+
+    @property
+    def program_name(self):
+        return self.settings["LoadRunner Settings"]["Program Name"]
 
     @property
     def is_master(self):

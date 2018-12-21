@@ -250,15 +250,19 @@ class DashTimeParseIssue(Exception):
     """
     pass
 
-
 class DashManifestPeriodSetup(Exception):
     """
     Thrown when a Dash Period cannot setup
     """
     pass
+
 class DashManifestPeriodSegmentPull(Exception):
     """
     Thrown when a Segment could not be pulled
     """
     pass
 
+class InvalidMetaDataAction(Exception):
+    """
+    Thrown when an invalid metadata action is tried to be run
+    """

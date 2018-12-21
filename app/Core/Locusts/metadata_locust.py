@@ -144,33 +144,44 @@ class MetaDataAiringTasks(TaskSet):
 
 class MetaDataAssetTasks(TaskSet):
 
-    @seq_task(1)
+    @task(1)
     def _load_all_schedules(locust):
-        while MetaDataAssetTasks.UnloadedAssets.pool:
+        if len(MetaDataAssetTasks.UnloadedAssets.pool) > 0:
             asset = MetaDataAssetTasks.UnloadedAssets.pool.pop()
-            MetaDataAssetTasks.post_json(locust, MetaDataAssetTasks.UnloadedAssets.route, json_info=asset,
-                                         post_method="PUT")
+           # MetaDataAssetTasks.post_json(locust, MetaDataAssetTasks.UnloadedAssets.route, json_info=asset,
+           #                               post_method="PUT")
             sched_guids = asset.get("schedule")
             for sched in sched_guids:
                 MetaDataAssetTasks.LoadedAssets.append(sched)
 
-    @seq_task(2)
-    @task(10)
-    def _get_asset_json(locust):
-        if not MetaDataAssetTasks.LoadedAssets:
-            return
-        sched_guid = random.choice(MetaDataAssetTasks.LoadedAssets)
-        url = MetaDataAssetTasks.GetAssetJSONURL.format(sched_guid = sched_guid)
-        MetaDataAssetTasks.post_json(locust, url, name="Get Asset Json", post_method="GET")
 
-    @seq_task(3)
-    @task(200)
-    def _get_asset_jpeg(locust):
-        if not MetaDataAssetTasks.LoadedAssets:
-            return
-        sched_guid = random.choice(MetaDataAssetTasks.LoadedAssets)
-        url = MetaDataAssetTasks.GetAssetJSONURL.format(sched_guid = sched_guid)
-        MetaDataAssetTasks.post_json(locust, url, name="Get Asset Jpeg", post_method="GET")
+        if MetaDataAssetTasks.LoadedAssets:
+            sched_guid = random.choice(MetaDataAssetTasks.LoadedAssets)
+            # get_json = bool(random.randint)
+            # if get_json:
+            #     url = MetaDataAssetTasks.GetAssetJSONURL.format(sched_guid=sched_guid)
+            #     MetaDataAssetTasks.post_json(locust, url, name="Get Asset Json", post_method="GET")
+            # else:
+            url = MetaDataAssetTasks.GetAssetJPEGURL.format(sched_guid=sched_guid)
+            MetaDataAssetTasks.post_json(locust, url, name="Get Asset Jpeg", post_method="GET")
+
+
+    # @seq_task(2)
+    # def _get_asset_json(locust):
+    #     if not MetaDataAssetTasks.LoadedAssets:
+    #         return
+    #     sched_guid = random.choice(MetaDataAssetTasks.LoadedAssets)
+    #     url = MetaDataAssetTasks.GetAssetJSONURL.format(sched_guid = sched_guid)
+    #     MetaDataAssetTasks.post_json(locust, url, name="Get Asset Json", post_method="GET")
+    #
+    # @seq_task(3)
+    # @task(200)
+    # def _get_asset_jpeg(locust):
+    #     if not MetaDataAssetTasks.LoadedAssets:
+    #         return
+    #     sched_guid = random.choice(MetaDataAssetTasks.LoadedAssets)
+    #     url = MetaDataAssetTasks.GetAssetJSONURL.format(sched_guid = sched_guid)
+    #     MetaDataAssetTasks.post_json(locust, url, name="Get Asset Jpeg", post_method="GET")
 
 
 
@@ -285,6 +296,8 @@ class MetaDataUser(HttpLocust):
                                                                                      "weight": 1,
                                                                                      "size": api_wrap.size}},
                                                                                 api_wrap.env)[1]
+                if len(MetaDataAssetTasks.UnloadedAssets) > 800:
+                    MetaDataAssetTasks.UnloadedAssets = MetaDataAssetTasks.UnloadedAssets[:800]
                 MetaDataAssetTasks.LoadedAssets = []
                 MetaDataAssetTasks.LoadAssetURL = api_base_host + api_config.get_route(MetaDataRelation.LOAD_ASSET, 1)
                 MetaDataAssetTasks.GetAssetJSONURL = api_base_host + api_config.get_route(

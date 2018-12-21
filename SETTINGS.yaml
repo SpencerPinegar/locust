@@ -242,6 +242,7 @@ Procedures:
 
 
 LoadRunner Settings:
+  Program Name: LoadRunner
   RPC Settings:
     port: 49636
     endpoint: /LoadServer

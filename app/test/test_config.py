@@ -33,6 +33,7 @@ class TestLoadRunnerSettings(LocustTest):
     Expected_stat_interval = 2
     Expected_preferred_master = "b-gp2-lgen-8.imovetv.com"
     Expected_potential_servers = ["b-gp2-lgen-8.imovetv.com", "b-gp2-lgen-9.imovetv.com"]
+    Expected_program_name = "LoadRunner"
 
     def setUp(self):
         LocustTest.setUp(self)
@@ -70,6 +71,10 @@ class TestLoadRunnerSettings(LocustTest):
 
     def test_potential_servers(self):
         self.assertSetEqual(set(self.Expected_potential_servers), set(self.config.potential_servers))
+
+    def test_program_name(self):
+        self.assertEqual(TestLoadRunnerSettings.Expected_program_name, self.config.program_name)
+
 
 
 

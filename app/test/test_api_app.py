@@ -6,10 +6,10 @@ import os
 from requests.exceptions import ConnectionError
 import json
 import requests
-from app.main import run_app
 from app.Utils.utils import build_api_info
 from app.Data.config import Config
 import subprocess32 as sp
+from app.Utils import utils
 
 class TestAPIApp(TestCase):
 
@@ -28,7 +28,7 @@ class TestAPIApp(TestCase):
         self.hatch_rate = 120
         self.setup_name = "VIP User Recordings"
         self.procedure_name = "VIP Benchmark"
-        self.app = sp.Popen(["python", "/Users/spencerpinegar/PycharmProjects/Performance_Test/app/main.py"])
+        self.app = sp.Popen([utils.get_python_path(), utils.get_entrance_path()])
 
 
     def tearDown(self):
@@ -113,7 +113,7 @@ class TestAPIApp(TestCase):
 
     def _assert_custom_start_incorrect_params_test_run(self, test_msg, **kwargs):
         expected_params = self.__get_start_custom_api_params(**kwargs)
-        test_id, response = self.__remote_api_call("startCustomTest", expected_params)
+        test_id, response = self.__remote_api_call("startCustomRecAPITest", expected_params)
         expected_error = {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'}
@@ -122,7 +122,7 @@ class TestAPIApp(TestCase):
 
     def _assert_failed_custom_start_other_test_already_running(self, test_msg):
         expected_params = self.__get_start_custom_api_params()
-        the_id, response = self.__remote_api_call("startCustomTest", expected_params)
+        the_id, response = self.__remote_api_call("startCustomRecAPITest", expected_params)
         self.__assert_error(response, the_id, {
             u'message': u'OtherError: {test_msg}'.format(test_msg=test_msg),
             u'code': 500, u'data': None, u'name': u'OtherError'})
@@ -151,7 +151,7 @@ class TestAPIApp(TestCase):
 
     def _assert_start_custom_api_test(self):
         expected_params = self.__get_start_custom_api_params()
-        call_id, respone = self.__remote_api_call("startCustomAPITest", expected_params)
+        call_id, respone = self.__remote_api_call("startCustomRecAPITest", expected_params)
         self.__assert_success(respone, call_id, True)
 
     def _stop_and_shutdown(self):

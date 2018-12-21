@@ -3,6 +3,9 @@ from app.Data.sql_route_statements import TEST_SQL_STATEMENTS
 import random
 import hashlib
 import re
+import subprocess32 as sp
+import os
+import socket
 
 size_key ="size"
 element_lb_key = "norm_lower"
@@ -12,6 +15,7 @@ weight_key = "weight"
 
 
 API_VERSION_KEYS = [size_key, element_ub_key, element_ub_key, optional_fields_key, weight_key]
+
 
 def merge_dicts(dict1, dict2):
     for key, value in dict2.items():
@@ -116,3 +120,40 @@ def to_sized_hex(number_to_hex, size_of_hex):
     formatter = "0x%0" + str(size_of_hex) + "x"
     number =  formatter % number_to_hex
     return number[2:]
+
+def start_hosts(hosts, program_name):
+    cmd = get_python_path() + " " + get_entrance_path()
+    for host in hosts:
+        # Ports are handled in ~/.ssh/config since we use OpenSSH
+        COMMAND = "pgrep -x {0}".format(program_name)
+
+        ssh = sp.Popen(["ssh", "%s" % host, COMMAND],
+                               shell=True,
+                               stdout=sp.PIPE,
+                               stderr=sp.PIPE)
+        result = ssh.stdout.readlines()
+        if result == []:
+            error = ssh.stderr.readlines()
+            print( "ERROR: %s" % error)
+        else:
+            print (result)
+
+
+def get_performance_test_dir():
+    performance_dir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    return performance_dir
+
+def get_entrance_path():
+    if on_lgen_server():
+        return "/home/spinegar/Performance_Test/main.py"
+    return os.path.join(get_performance_test_dir(), "main.py")
+
+
+def get_python_path():
+    if on_lgen_server():
+        return "/home/spinegar/Performance_Test/localVenv/bin/python"
+    return "/Users/spencerpinegar/PycharmProjects/Performance_Test/venv/bin/python"
+
+def on_lgen_server():
+    return "lgen" in socket.getfqdn()
+

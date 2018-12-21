@@ -12,7 +12,8 @@ from multiprocessing import Process
 from requests.exceptions import ConnectionError
 from app.Core.exceptions import (SlaveInitilizationException, InvalidRoute, InvalidAPIEnv, InvalidPlaybackPlayer,
                                  InvalidPlaybackRoute, InvalidAPIVersion, InvalidAPINode, InvalidAPIVersionParams,
-                                 InvalidCodec, OptionTypeError, TestAlreadyRunning, NotEnoughAvailableCores)
+                                 InvalidCodec, OptionTypeError, TestAlreadyRunning, NotEnoughAvailableCores,
+                                 InvalidMetaDataAction,)
 from app.Utils.environment_wrapper import (PlaybackEnvironmentWrapper as PlaybackWrap,
                                            RecAPIEnvironmentWrapper as RecAPIWrap, MetaDataEnvironmentWrapper as MDWrap)
 from app.Utils.utils import size_key, API_VERSION_KEYS, clean_stdout
@@ -208,10 +209,14 @@ class LoadRunner:
             else:
                 return False
 
-    def run_distributed(self, rps, api_call_weight, env, node, version, min, max):
 
-        # TODO find a way to distribute segemented test data when running
-        pass
+    def custom_metadata_test(self, action, put_size, total_assets, env, node, stat_int=2):
+        self.__raise_if_running()
+        self.stop_tests()
+        self._verify_metadata_options(action, put_size, total_assets, node, env, stat_int)
+        options = self._get_metadata_options(action, put_size, env, node, stat_int, total_assets)
+        self._run_multi_core(options, locust_file_paths.web_host, locust_file_paths.metadata)
+
 
     def custom_playback_test(self, client, playback_route, quality, codecs, users=None, dvr=None, days_old=None,
                              stat_int=2):
@@ -326,8 +331,8 @@ class LoadRunner:
         return PlaybackWrap(playback_route, quality, codecs, client, users, dvr, days_old, stat_interval,
                             comp_idx, 0, max_comp_idx, 0, overall_size)
 
-    def _get_metadata_options(self, action, put_size, env, node, stat_interval, comp_idx=0, max_comp_idx=0):
-       return MDWrap(action, node, env, put_size, stat_interval, comp_idx, 0, max_comp_idx, 0, 200)
+    def _get_metadata_options(self, action, put_size, env, node, stat_interval, total_assets,  comp_idx=0, max_comp_idx=0):
+       return MDWrap(action, node, env, put_size, stat_interval, comp_idx, 0, max_comp_idx, 0, total_assets)
 
 
     def _get_locust_options(self, host, locust_file, log_level, log_file,
@@ -406,18 +411,20 @@ class LoadRunner:
     ##########################################  Process Create  #############################################################
     ########################################################################################################################
 
-    def _run_distributed(self, env_options, master_locust_file, slave_locust_file):
-        host_name = socket.getfqdn()
+
+    def _run_distributed(self, env_options, master_locust_file, slave_locust_file, slave_cores, is_master=False,
+                         stats_file_name=None, log_level=None, log_file_name=None, stats_older=None, log_folder=None):
+        if is_master:
+            master_options = self._get_locust_options()
+        env_options.max_slave_index = slave_cores
 
 
+        # TODO find a way to distribute segemented test data when running
         pass
-
-
 
     def _run_multi_core(self, env_options, master_locust_file, slave_locust_file,
                         stats_file_name=None, log_level=None, log_file_name=None,
                         stats_folder=None, log_folder=None, expected_slaves=None):
-
         self._kill_test()
         # check current core loads to determine possible usage
         available_cores = self.cores
@@ -552,9 +559,22 @@ class LoadRunner:
     ##########################################  VERIFY FUNCS  ##############################################################
     ########################################################################################################################
 
+
+    def _verify_metadata_options(self, action, put_size, total_assets, node, env, stat_int):
+        valid_action = ["Asset", "Airing"]
+        if action not in valid_action:
+            raise InvalidMetaDataAction("{act} Invalid MetaData Action - Valid: {vld}".format(act=action,
+                                                                                              vld=valid_action))
+        self.__verify_env(env, "metadata")
+        self.__verify_node(env, node, "metadata")
+        self.__verify_int("{} option".format(MDWrap.PUT_SIZE_KEY), put_size)
+        self.__verify_int("{} option".format(MDWrap.QUERY_SIZE_KEY), total_assets)
+        self.__verify_int("{} options".format(MDWrap.STAT_INT_KEY), stat_int)
+
+
+
     def _verify_playback_options(self, client, playback_route, quality, codecs, users, dvr, days_old,
                                  stat_int):  # check dist loc info
-
         # check playback route
         if playback_route not in self.config.playback_routes:
             raise InvalidPlaybackRoute("{rte} Invalid Playback Route - Valid: {vld}".format(rte=playback_route,
